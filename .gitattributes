@@ -1,0 +1,4 @@
+# Auto-resolve merge conflicts for Convex generated files
+# Always keep current branch version (they regenerate anyway)
+convex/_generated/* merge=ours
+
