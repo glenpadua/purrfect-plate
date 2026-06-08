@@ -3,7 +3,7 @@
 This app keeps Convex focused on one domain: recipes.
 
 - `schema.ts` defines the single `recipes` table.
-- `recipes.ts` provides list, get, create, update, mark-cooked, and delete functions.
+- `recipes.ts` provides list, get, create, update, mark-cooked, random, tag-listing, and delete functions.
 - `auth.config.ts` keeps providers empty because v1 is intentionally unauthenticated.
 
 ## Local workflow

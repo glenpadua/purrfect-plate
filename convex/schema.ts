@@ -4,7 +4,7 @@ import { v } from "convex/values"
 export default defineSchema({
   recipes: defineTable({
     name: v.string(),
-    imageUrl: v.string(),
+    imageStorageId: v.id("_storage"),
     tags: v.array(v.string()),
     note: v.optional(v.string()),
     lastCookedAt: v.optional(v.number()),
