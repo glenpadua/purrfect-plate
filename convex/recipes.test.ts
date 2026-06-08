@@ -115,6 +115,21 @@ describe("recipes", () => {
     expect(recipe?.lastCookedAt).toEqual(expect.any(Number))
   })
 
+  test("removes recipes from the library", async () => {
+    const t = convexTest(schema, modules)
+    const imageStorageId = await storeImage(t)
+
+    const id = await t.mutation(api.recipes.create, {
+      name: "Tomato Rice",
+      imageStorageId,
+      tags: [],
+    })
+
+    await t.mutation(api.recipes.remove, { id })
+
+    await expect(t.query(api.recipes.get, { id })).resolves.toBeNull()
+  })
+
   test("returns a random recipe matching all selected tags", async () => {
     const t = convexTest(schema, modules)
     const quickImageStorageId = await storeImage(t)

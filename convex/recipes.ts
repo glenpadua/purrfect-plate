@@ -271,6 +271,7 @@ export const remove = mutation({
       throw new ConvexError("Recipe not found")
     }
 
+    await ctx.storage.delete(recipe.imageStorageId)
     await ctx.db.delete(args.id)
     return null
   },

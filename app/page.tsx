@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAction, useMutation, useQuery } from "convex/react"
+import { motion } from "framer-motion"
 import {
   Camera,
   Check,
@@ -296,18 +297,20 @@ function RecipeCard({
     >
       <Link href={`/recipe/${recipe._id}`} className="absolute inset-0">
         <span className="sr-only">{recipe.name}</span>
-        {recipe.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={recipe.imageUrl}
-            alt=""
-            className="size-full object-cover transition duration-500 group-hover:scale-[1.04]"
-          />
-        ) : (
-          <div className="grid size-full place-items-center bg-[linear-gradient(135deg,var(--muted),var(--secondary))]">
-            <Camera className="size-9 text-muted-foreground" />
-          </div>
-        )}
+        <motion.div layoutId={`recipe-photo-${recipe._id}`} className="size-full">
+          {recipe.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={recipe.imageUrl}
+              alt=""
+              className="size-full object-cover transition duration-500 group-hover:scale-[1.04]"
+            />
+          ) : (
+            <div className="grid size-full place-items-center bg-[linear-gradient(135deg,var(--muted),var(--secondary))]">
+              <Camera className="size-9 text-muted-foreground" />
+            </div>
+          )}
+        </motion.div>
       </Link>
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-[linear-gradient(180deg,transparent,oklch(0.12_0.02_38_/_0.28)_18%,oklch(0.1_0.018_38_/_0.86)_56%,oklch(0.08_0.014_38_/_0.98))] px-2.5 pb-2.5 pt-20 text-white sm:px-3 sm:pb-3">
