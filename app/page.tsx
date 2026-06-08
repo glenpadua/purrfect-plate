@@ -1,31 +1,22 @@
+"use client"
+
 import Link from "next/link"
-import { Camera, Heart, Search, Shuffle } from "lucide-react"
+import { useQuery } from "convex/react"
+import { Camera, Plus, Shuffle } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-
-const starterTags = ["quick", "comfort", "breakfast", "fancy"]
-
-const placeholderRecipes = [
-  {
-    name: "Add the first recipe",
-    note: "Photos, names, tags, and tiny notes only.",
-    tags: ["quick"],
-  },
-  {
-    name: "Import the backlog",
-    note: "The bulk import ticket will turn filenames into starter cards.",
-    tags: ["photos"],
-  },
-  {
-    name: "Let the cat pick",
-    note: "Surprise Me lands once the recipe data is wired.",
-    tags: ["comfort"],
-  },
-]
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { api } from "@/convex/_generated/api"
 
 export default function LibraryPage() {
+  const recipes = useQuery(api.recipes.list, {})
+
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,var(--color-accent),transparent_34rem)] px-4 py-5 sm:px-6 lg:px-8">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
@@ -39,8 +30,7 @@ export default function LibraryPage() {
                 What should I cook today?
               </h1>
               <p className="max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
-                A cozy visual catalogue for the dishes worth remembering. Keep
-                the cards light: photo, name, tags, and a short note.
+                A cozy visual catalogue for the dishes worth remembering.
               </p>
             </div>
           </div>
@@ -52,60 +42,87 @@ export default function LibraryPage() {
             </Button>
             <Button asChild variant="outline" className="h-11 gap-2">
               <Link href="/add">
-                <Camera className="size-4" />
+                <Plus className="size-4" />
                 Add recipe
               </Link>
             </Button>
           </div>
         </header>
 
-        <section className="flex flex-col gap-3 rounded-lg border bg-background/82 p-3 shadow-sm backdrop-blur sm:flex-row sm:items-center">
-          <label className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input className="h-11 pl-9" placeholder="Search recipes" disabled />
-          </label>
-          <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
-            {starterTags.map((tag) => (
-              <Button key={tag} variant="secondary" size="sm" disabled>
-                {tag}
-              </Button>
-            ))}
-          </div>
-        </section>
-
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {placeholderRecipes.map((recipe) => (
-            <article
-              key={recipe.name}
-              className="group overflow-hidden rounded-lg border bg-card shadow-sm"
-            >
-              <div className="flex aspect-[4/3] items-center justify-center bg-muted">
-                <Camera className="size-10 text-muted-foreground" />
-              </div>
-              <div className="space-y-3 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="font-medium">{recipe.name}</h2>
-                    <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                      {recipe.note}
-                    </p>
+        {recipes === undefined ? (
+          <section className="rounded-lg border bg-card p-6 text-sm text-muted-foreground shadow-sm">
+            Loading recipes...
+          </section>
+        ) : recipes.length ? (
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {recipes.map((recipe) => (
+              <Link
+                key={recipe._id}
+                href={`/recipe/${recipe._id}`}
+                className="group outline-hidden"
+              >
+                <Card className="h-full gap-0 overflow-hidden p-0 shadow-sm transition group-hover:-translate-y-0.5 group-hover:shadow-md group-focus-visible:ring-2 group-focus-visible:ring-ring">
+                  <div className="flex aspect-[4/3] items-center justify-center bg-muted">
+                    {recipe.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={recipe.imageUrl}
+                        alt={recipe.name}
+                        className="size-full object-contain"
+                      />
+                    ) : (
+                      <Camera className="size-10 text-muted-foreground" />
+                    )}
                   </div>
-                  <Button variant="ghost" size="icon" disabled>
-                    <Heart className="size-4" />
-                    <span className="sr-only">Favorite recipe</span>
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {recipe.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
+                  <CardHeader className="px-4 pt-4">
+                    <CardTitle className="line-clamp-2 text-base">
+                      {recipe.name}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 px-4 pb-4">
+                    {recipe.note ? (
+                      <p className="line-clamp-2 text-sm leading-5 text-muted-foreground">
+                        {recipe.note}
+                      </p>
+                    ) : null}
+                    <div className="flex flex-wrap gap-2">
+                      {recipe.tags.length ? (
+                        recipe.tags.map((tag) => (
+                          <Badge key={tag} variant="secondary">
+                            {tag}
+                          </Badge>
+                        ))
+                      ) : (
+                        <Badge variant="outline">untagged</Badge>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </section>
+        ) : (
+          <section className="rounded-lg border bg-card p-6 shadow-sm">
+            <div className="flex max-w-md flex-col gap-4">
+              <Camera className="size-10 text-muted-foreground" />
+              <div className="space-y-2">
+                <h2 className="text-xl font-semibold tracking-normal">
+                  No recipes yet
+                </h2>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Add the first photo card so there is something to test, edit,
+                  and eventually randomize.
+                </p>
               </div>
-            </article>
-          ))}
-        </section>
+              <Button asChild className="w-fit gap-2">
+                <Link href="/add">
+                  <Plus className="size-4" />
+                  Add recipe
+                </Link>
+              </Button>
+            </div>
+          </section>
+        )}
       </div>
     </main>
   )

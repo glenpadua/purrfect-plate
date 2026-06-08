@@ -17,6 +17,14 @@ async function storeImage(t: ReturnType<typeof convexTest>) {
 }
 
 describe("recipes", () => {
+  test("generates a recipe photo upload URL", async () => {
+    const t = convexTest(schema, modules)
+
+    const uploadUrl = await t.mutation(api.recipes.generateUploadUrl)
+
+    expect(uploadUrl).toContain("/api/storage/upload")
+  })
+
   test("creates recipes with normalized tags and resolved image URLs", async () => {
     const t = convexTest(schema, modules)
     const imageStorageId = await storeImage(t)
