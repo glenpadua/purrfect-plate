@@ -44,3 +44,10 @@ The preserved original pantry commit is `076f532`; the shared UI port and remova
 Validation: 124 backend/domain tests and 10 shared native component tests passed. Root/mobile TypeScript, Expo web export, iOS bundle export and the Next server build passed. In the in-app browser, the 56-recipe development library loaded; pantry coverage used the new backend; a keyboard checkbox updated pantry; merge preview/cancel, plain-name copying, shopping Clear/Undo and original ordering worked. Egg/flour pantry presence and milk/pepper shopping entries were restored after checks. Desktop at 1280px and phone browser at 390px fit without horizontal overflow. The transient large-eggs test identity remains absent from stock.
 
 Local release routing returned Expo HTML for home, pantry, recipe edit, sign-in and unknown-screen links; missing API/bundle paths stayed 404, and an unauthenticated import-worker request returned 401. The native bundle/component checks do not constitute a new simulator interaction or physical-phone acceptance.
+
+
+## Production release — 12 September 2026
+
+Consolidated Vercel deployment `dpl_GLAkFH8FdXDRftPgzfF3HFuvLsyQ` ([build](https://purrfect-plate-hx0fytbk9-glen-paduas-projects.vercel.app)) was promoted to [the existing live URL](https://purrfect-plate-theta.vercel.app). Production Convex accepted the combined pantry schema/functions without deleting indexes. Local environment files, Git metadata, dependencies and generated evidence are explicitly excluded from Vercel uploads.
+
+The live in-app browser loaded 57 recipes, the new pantry screen with existing pantry/shopping entries, and Simple Mutton Biryani with shared pantry checkboxes. HTTP checks confirmed the new Expo bundle on home/pantry/recipe-edit deep links, 404 for an unknown API, and 401 for an unauthenticated worker request. No new paid source extraction or production recipe/pantry edits were performed for this consolidation check beyond the app's idempotent pantry initialization. Existing browser tabs using the older pantry API need a reload.
