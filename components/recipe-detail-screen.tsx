@@ -2,14 +2,18 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useMutation, useQuery } from "convex/react"
-import { motion } from "framer-motion"
+import { useMutation, useQuery } from "@/lib/recipe-client"
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import {
   ArrowLeft,
   Camera,
   CalendarDays,
+  Cat,
   CookingPot,
+  Fish,
+  Heart,
   Loader2,
+  PawPrint,
   Pencil,
   Sparkles,
   Trash2,
@@ -33,6 +37,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
+import { CookingPanel } from "@/features/cooking/cooking-panel"
 import { cn } from "@/lib/utils"
 
 const tagHues = [18, 48, 78, 138, 178, 228, 288, 328]
@@ -95,27 +100,68 @@ function cookedMilestoneLine(cookCount: number) {
 function CookedAgainButton({
   disabled,
   isLoading,
+  celebrationKey,
   onClick,
 }: {
   disabled: boolean
   isLoading: boolean
+  celebrationKey: number
   onClick: () => void
 }) {
+  const shouldReduceMotion = useReducedMotion()
+
   return (
-    <Button
-      type="button"
-      size="lg"
-      onClick={onClick}
-      disabled={disabled}
-      className="h-12 gap-2 bg-primary text-base shadow-md shadow-primary/15 active:translate-y-0.5"
+    <div className="relative">
+      <AnimatePresence>
+        {celebrationKey > 0 && !shouldReduceMotion ? (
+          <CookedCelebration key={celebrationKey} />
+        ) : null}
+      </AnimatePresence>
+      <Button
+        type="button"
+        size="lg"
+        onClick={onClick}
+        disabled={disabled}
+        className="h-12 w-full gap-2 bg-primary text-base shadow-md shadow-primary/15 active:translate-y-0.5"
+      >
+        {isLoading ? (
+          <Loader2 className="size-5 animate-spin" />
+        ) : (
+          <CookingPot className="size-5" />
+        )}
+        Cooked it again
+      </Button>
+    </div>
+  )
+}
+
+function CookedCelebration() {
+  const pieces = [
+    { Icon: Fish, className: "left-[16%] text-accent-foreground", x: -26, y: -38, rotate: -16 },
+    { Icon: PawPrint, className: "left-[46%] text-primary", x: 0, y: -48, rotate: 10 },
+    { Icon: Heart, className: "left-[72%] text-primary", x: 24, y: -34, rotate: 18 },
+  ]
+
+  return (
+    <motion.div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-x-0 -top-1 z-10 h-10 overflow-visible"
+      initial={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
     >
-      {isLoading ? (
-        <Loader2 className="size-5 animate-spin" />
-      ) : (
-        <CookingPot className="size-5" />
-      )}
-      Cooked it again
-    </Button>
+      {pieces.map(({ Icon, className, x, y, rotate }, index) => (
+        <motion.span
+          key={index}
+          className={cn("absolute top-1", className)}
+          initial={{ opacity: 0, x: 0, y: 0, scale: 0.62, rotate: 0 }}
+          animate={{ opacity: [0, 1, 0], x, y, scale: [0.62, 1, 0.92], rotate }}
+          transition={{ duration: 0.72, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <Icon className="size-4 fill-background/70 drop-shadow-sm" />
+        </motion.span>
+      ))}
+    </motion.div>
   )
 }
 
@@ -128,6 +174,7 @@ export function RecipeDetailScreen({ id }: { id: Id<"recipes"> }) {
   const [optimisticCookedAt, setOptimisticCookedAt] = useState<number | null>(null)
   const [isCooking, setIsCooking] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [cookCelebrationKey, setCookCelebrationKey] = useState(0)
 
   const displayedCookCount = recipe
     ? recipe.cookCount + Number(Boolean(optimisticCookedAt))
@@ -146,6 +193,7 @@ export function RecipeDetailScreen({ id }: { id: Id<"recipes"> }) {
 
     setOptimisticCookedAt(now)
     setIsCooking(true)
+    setCookCelebrationKey((key) => key + 1)
     window.navigator.vibrate?.(12)
 
     try {
@@ -180,7 +228,10 @@ export function RecipeDetailScreen({ id }: { id: Id<"recipes"> }) {
   if (recipe === undefined) {
     return (
       <main className={cn(pageBackground, "px-4 py-6 sm:px-6")}>
-        <div className="mx-auto w-full max-w-4xl text-sm text-muted-foreground">
+        <div className="mx-auto flex w-full max-w-4xl items-center gap-3 text-sm text-muted-foreground">
+          <div className="grid size-10 place-items-center rounded-full border bg-background/80 text-primary shadow-sm">
+            <Cat className="size-5" />
+          </div>
           Loading recipe...
         </div>
       </main>
@@ -317,6 +368,10 @@ export function RecipeDetailScreen({ id }: { id: Id<"recipes"> }) {
             </div>
           </div>
 
+          {recipe.origin === "imported" && recipe.sourceUrl ? <div className="rounded-lg border bg-card p-4 text-sm"><span className="text-muted-foreground">Imported from {recipe.sourcePlatform}{recipe.sourceAuthor ? ` · ${recipe.sourceAuthor}` : ""}</span><a href={recipe.sourceUrl} target="_blank" rel="noopener noreferrer" className="ml-3 text-primary underline underline-offset-4">Original recipe ↗</a></div> : null}
+          {recipe.servings ? <p className="text-sm text-muted-foreground">Servings: {recipe.servings}</p> : null}
+          {recipe.ingredients?.length || recipe.instructions?.length || recipe.recipeNotes?.length ? <CookingPanel key={recipe._id} ingredients={recipe.ingredients} instructions={recipe.instructions} recipeNotes={recipe.recipeNotes} servings={recipe.servings} /> : null}
+          {recipe.importWarnings?.length ? <section className="rounded-lg border border-amber-500/30 bg-card p-5"><h2 className="mb-3 text-xl">Things to check</h2><ul className="list-disc space-y-2 pl-5 text-sm leading-6">{recipe.importWarnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></section> : null}
           {recipe.note ? (
             <div className="rounded-lg border bg-background/85 p-4 shadow-sm backdrop-blur dark:bg-card/75">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
@@ -338,6 +393,7 @@ export function RecipeDetailScreen({ id }: { id: Id<"recipes"> }) {
             onClick={handleCookedAgain}
             disabled={isCooking || isDeleting}
             isLoading={isCooking}
+            celebrationKey={cookCelebrationKey}
           />
           <Button asChild variant="outline" size="lg" className="h-10 gap-2">
             <Link href={`/recipe/${id}/edit`}>
@@ -359,6 +415,7 @@ export function RecipeDetailScreen({ id }: { id: Id<"recipes"> }) {
             onClick={handleCookedAgain}
             disabled={isCooking || isDeleting}
             isLoading={isCooking}
+            celebrationKey={cookCelebrationKey}
           />
           <Button
             asChild

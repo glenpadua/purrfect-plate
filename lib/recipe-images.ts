@@ -56,10 +56,9 @@ export async function prepareRecipeImage(
 }
 
 export async function uploadRecipeImage(
-  uploadUrl: string,
   file: File,
 ): Promise<Id<"_storage">> {
-  const response = await fetch(uploadUrl, {
+  const response = await fetch("/api/recipes/upload", {
     method: "POST",
     headers: {
       "Content-Type": file.type,

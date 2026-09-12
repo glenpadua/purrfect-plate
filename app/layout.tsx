@@ -1,3 +1,5 @@
+import { ClerkProvider } from "@clerk/nextjs";
+import { shadcn } from "@clerk/ui/themes"
 import "./globals.css"
 
 import type { Metadata } from "next"
@@ -40,15 +42,17 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="font-sans antialiased">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <ClerkProvider appearance={{ theme: shadcn }}>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <div className="fixed top-4 right-4 z-50">
-            <ModeToggle />
+          <ModeToggle />
           </div>
           <ConvexClientProvider>
-            {children}
-            <Toaster richColors position="bottom-right" />
+          {children}
+          <Toaster richColors position="bottom-right" />
           </ConvexClientProvider>
-        </ThemeProvider>
+          </ThemeProvider>
+        </ClerkProvider>
       </body>
     </html>
   )

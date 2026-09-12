@@ -1,7 +1,7 @@
 "use client"
 
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react"
-import { useMutation, useQuery } from "convex/react"
+import { useMutation, useQuery } from "@/lib/recipe-client"
 import { Camera, Loader2, Plus, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -19,15 +19,20 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { recipeLinesFromText, recipeLinesToText, type RecipeLine } from "@/lib/recipe-lines"
 import { prepareRecipeImage, uploadRecipeImage } from "@/lib/recipe-images"
 
 type ExistingRecipe = {
   _id: Id<"recipes">
   name: string
-  imageStorageId: Id<"_storage">
+  imageStorageId?: Id<"_storage">
   imageUrl: string | null
   tags: string[]
   note?: string
+  ingredients?: RecipeLine[]
+  instructions?: RecipeLine[]
+  recipeNotes?: RecipeLine[]
+  servings?: string
 }
 
 type RecipeFormProps = {
@@ -45,12 +50,15 @@ export function RecipeForm({ mode, recipe }: RecipeFormProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const tagInputRef = useRef<HTMLInputElement | null>(null)
   const tagSuggestions = useQuery(api.recipes.listTags) ?? []
-  const generateUploadUrl = useMutation(api.recipes.generateUploadUrl)
   const createRecipe = useMutation(api.recipes.create)
   const updateRecipe = useMutation(api.recipes.update)
 
   const [name, setName] = useState(recipe?.name ?? "")
   const [note, setNote] = useState(recipe?.note ?? "")
+  const [ingredients, setIngredients] = useState(recipeLinesToText(recipe?.ingredients))
+  const [instructions, setInstructions] = useState(recipeLinesToText(recipe?.instructions))
+  const [recipeNotes, setRecipeNotes] = useState(recipeLinesToText(recipe?.recipeNotes))
+  const [servings, setServings] = useState(recipe?.servings ?? "")
   const [tags, setTags] = useState<string[]>(recipe?.tags ?? [])
   const [tagInput, setTagInput] = useState("")
   const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(null)
@@ -135,31 +143,29 @@ export function RecipeForm({ mode, recipe }: RecipeFormProps) {
       return
     }
 
-    if (mode === "create" && !selectedImage) {
-      setImageError("Add a photo before saving.")
-      return
-    }
-
     setIsSaving(true)
 
     try {
       let imageStorageId = recipe?.imageStorageId
 
       if (selectedImage) {
-        const uploadUrl = await generateUploadUrl()
-        imageStorageId = await uploadRecipeImage(uploadUrl, selectedImage.file)
+        imageStorageId = await uploadRecipeImage(selectedImage.file)
       }
 
-      if (!imageStorageId) {
-        throw new Error("Recipe photo is required.")
+      const content = {
+        ingredients: recipeLinesFromText(ingredients, recipe?.ingredients),
+        instructions: recipeLinesFromText(instructions, recipe?.instructions),
+        recipeNotes: recipeLinesFromText(recipeNotes, recipe?.recipeNotes),
+        servings: servings.trim(),
       }
 
       if (mode === "create") {
         const id = await createRecipe({
+          ...content,
           name: trimmedName,
           imageStorageId,
           tags,
-          note: note.trim() || undefined,
+          note: note.trim(),
         })
         toast.success("Recipe saved")
         router.push(`/recipe/${id}`)
@@ -171,11 +177,12 @@ export function RecipeForm({ mode, recipe }: RecipeFormProps) {
       }
 
       await updateRecipe({
+        ...content,
         id: recipe._id,
         name: trimmedName,
         imageStorageId,
         tags,
-        note: note.trim() || undefined,
+        note: note.trim(),
       })
       toast.success("Recipe updated")
       router.push(`/recipe/${recipe._id}`)
@@ -192,7 +199,7 @@ export function RecipeForm({ mode, recipe }: RecipeFormProps) {
         <CardHeader>
           <CardTitle>{mode === "create" ? "Recipe card" : "Recipe details"}</CardTitle>
           <CardDescription>
-            Photo, name, tags, and a short note. Nothing else for v1.
+            The ingredients, the method, and the little details worth remembering. A photo is optional.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -234,7 +241,7 @@ export function RecipeForm({ mode, recipe }: RecipeFormProps) {
               <p className="text-xs text-destructive">{imageError}</p>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Images are compressed to JPEG before upload.
+                Photos are resized automatically to keep your library light.
               </p>
             )}
           </div>
@@ -307,6 +314,11 @@ export function RecipeForm({ mode, recipe }: RecipeFormProps) {
             </div>
           </div>
 
+          <label className="grid gap-2 text-sm font-medium">Servings<Input value={servings} onChange={event => setServings(event.target.value)} placeholder="e.g. 4 people" maxLength={100} /></label>
+          <label className="grid gap-2 text-sm font-medium">Ingredients<Textarea rows={7} value={ingredients} onChange={event => setIngredients(event.target.value)} placeholder={"One ingredient per line\n2 eggs\n1 tbsp olive oil"} /></label>
+          <label className="grid gap-2 text-sm font-medium">Instructions<Textarea rows={9} value={instructions} onChange={event => setInstructions(event.target.value)} placeholder="One step per line" /></label>
+          <p className="text-xs text-muted-foreground">Use ## Heading on a separate line to group ingredients or steps.</p>
+          <label className="grid gap-2 text-sm font-medium">Recipe notes<Textarea rows={5} value={recipeNotes} onChange={event => setRecipeNotes(event.target.value)} placeholder="Substitutions and tips, one per line" /></label>
           <label className="grid gap-2 text-sm font-medium">
             Note
             <Textarea

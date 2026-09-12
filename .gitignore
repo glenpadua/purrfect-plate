@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local source evidence from real extraction experiments
+/outputs/extraction-prototype/
+/outputs/deployment/
+**/__pycache__/
+/.venv-extraction/
+.env*

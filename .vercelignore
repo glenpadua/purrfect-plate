@@ -1,0 +1,5 @@
+.venv-extraction
+outputs
+.playwright-mcp
+services
+*.png

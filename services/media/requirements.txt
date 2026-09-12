@@ -1,0 +1,7 @@
+fastapi==0.135.1
+yt-dlp[default]==2026.8.19
+youtube-transcript-api==1.2.4
+instaloader==4.15.3
+imageio-ffmpeg==0.6.0
+curl_cffi==0.16.3
+nodejs-wheel-binaries==24.19.0

@@ -8,7 +8,14 @@
  * @module
  */
 
+import type * as access from "../access.js";
+import type * as importWorker from "../importWorker.js";
+import type * as imports from "../imports.js";
+import type * as libraries from "../libraries.js";
+import type * as migrations from "../migrations.js";
+import type * as model from "../model.js";
 import type * as recipes from "../recipes.js";
+import type * as tagMaintenance from "../tagMaintenance.js";
 
 import type {
   ApiFromModules,
@@ -17,7 +24,14 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  access: typeof access;
+  importWorker: typeof importWorker;
+  imports: typeof imports;
+  libraries: typeof libraries;
+  migrations: typeof migrations;
+  model: typeof model;
   recipes: typeof recipes;
+  tagMaintenance: typeof tagMaintenance;
 }>;
 
 /**

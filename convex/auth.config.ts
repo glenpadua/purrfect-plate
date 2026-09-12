@@ -1,6 +1,7 @@
 import type { AuthConfig } from "convex/server"
 
-// v1 is single-user and intentionally unauthenticated.
 export default {
-  providers: [],
+  providers: process.env.CLERK_JWT_ISSUER_DOMAIN
+    ? [{ domain: process.env.CLERK_JWT_ISSUER_DOMAIN, applicationID: "convex" }]
+    : [],
 } satisfies AuthConfig

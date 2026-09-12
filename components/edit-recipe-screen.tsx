@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useQuery } from "convex/react"
+import { useQuery } from "@/lib/recipe-client"
 import { ArrowLeft } from "lucide-react"
 
 import { RecipeForm } from "@/components/recipe-form"

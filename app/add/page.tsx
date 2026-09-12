@@ -18,11 +18,11 @@ export default function AddRecipePage() {
         <header className="space-y-2">
           <h1 className="text-3xl font-semibold tracking-normal">Add recipe</h1>
           <p className="text-sm leading-6 text-muted-foreground">
-            Capture the photo first, then add the tiny details that make it easy
-            to find later.
+            Save a recipe from a link, or write down one of your own.
           </p>
         </header>
 
+        <Link href="/import" className="rounded-xl border border-primary/25 bg-primary/5 p-5"><span className="font-semibold text-primary">Import from a link ↗</span><p className="mt-1 text-sm text-muted-foreground">Instagram, TikTok, YouTube, or a recipe website.</p></Link>
         <RecipeForm mode="create" />
       </div>
     </main>
