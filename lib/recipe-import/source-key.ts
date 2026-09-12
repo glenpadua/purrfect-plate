@@ -17,4 +17,3 @@ export function sourceKey(value: string) {
   for (const key of [...url.searchParams.keys()]) if (/^(utm_|igsh|stkn|fbclid)/i.test(key)) url.searchParams.delete(key)
   return url.href
 }
-
