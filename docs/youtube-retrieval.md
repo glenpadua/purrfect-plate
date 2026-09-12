@@ -1,6 +1,6 @@
 # YouTube retrieval: decision and evidence
 
-Last reconciled: 12 September 2026. **The deployed Gemini fallback can read the three supplied public YouTube videos.** The hosted app imported and saved the two spoken samples. Silent biryani correctly stopped with insufficient recipe evidence and an alternative search. Native retrieval from the observed Vercel network remains blocked; that is now a fallback trigger, not an unresolved blocker for these samples.
+Last reconciled: 12 September 2026. **The deployed Gemini fallback can read the three supplied public YouTube videos.** CrunchWrap passed hosted import/save. The wrapping tutorial exposed a relevance bug and is now rejected as a standalone technique; its test recipe was removed with approval. Silent biryani stopped with insufficient evidence and alternative search. Native retrieval remains blocked on the observed Vercel network; that is now a fallback trigger for these samples.
 
 ## Current production decision
 
@@ -15,14 +15,14 @@ Model-derived speech, visible text and visual observations remain different evid
 | Sample | Verified outcome | Gemini usage and duration |
 | --- | --- | --- |
 | `_qFZJjnN73o` — Breakfast CrunchWrap | Fresh hosted import → review → save: ten ingredient lines, eight steps and missing-detail warnings. Recipe `js7br0ycrz5cndmfvz75375hkn8e8ayy`. | 5,930 input / 1,596 output tokens; 12.4 seconds. |
-| `z1XshOQJmrw` — How To Wrap A Perfect Burrito | Fresh hosted import → review → save: two generic ingredient lines and six wrapping steps. Saved as **How to wrap a burrito**, recipe `js700gnh5j86y8zyb126a4fwfh8e9rca`. Fillings and amounts remain unspecified. | 2,839 input / 724 output tokens; 7.4 seconds. |
-| `GiqOJyy3oWE` — Hyderabadi Chicken Dum Biryani | **Not enough recipe details**, with an editable **Hyderabadi Chicken Dum Biryani recipe** search. No recipe saved; visual guesses did not become ingredients. | The initial failed job predates failure-audit retention, so its hosted provider usage was not retained. Do not substitute an earlier experiment's usage. |
+| `z1XshOQJmrw` — How To Wrap A Perfect Burrito | Now rejected at preflight as a technique, with no full extraction. The earlier mistakenly saved test recipe was removed with user approval; retained job `j978q7s7s27nkt8eczxzf17bds8e8gp9` passed a fresh hosted recheck. | Earlier retrieval proof only: 2,839 input / 724 output tokens; 7.4 seconds. This does not establish a recipe. |
+| `GiqOJyy3oWE` — Hyderabadi Chicken Dum Biryani | **Not enough recipe details**, with an editable **Hyderabadi Chicken Dum Biryani recipe** search. A fresh recheck retained its evidence audit; no recipe was saved. | Recheck: Gemini 5,116 input / 676 output tokens, 6.2 seconds; normalization 1,049 input / 209 output tokens. |
 
 Provider durations exclude native retrieval attempts, normalization and user review. These are sample-specific results, not a guarantee for every public YouTube link.
 
 The failed proof-of-origin diagnostics have been removed from source and deployed. Commit `993c94d` triggered a ready web deployment; the media build required the root ignore-rule fix in `a53d103`, whose Git-triggered production build passed. Both Vercel projects auto-deploy from `main`; Convex deployment is separate.
 
-New worker code preserves bounded failure evidence, media/preflight/normalization usage, warnings and citations for insufficient outcomes. Its extraction-interface tests cover visual-only input and a watermark-only empty draft. The final web release and hosted failure-audit check are still pending at this checkpoint; the old biryani record is not retroactively filled.
+The deployed worker preserves bounded failure evidence, media/preflight/normalization usage, warnings and citations for insufficient outcomes. The hosted biryani recheck retained 17 evidence entries and provider usage in a 7,129-character audit while returning the same honest insufficient result. This is newly observed evidence, not reconstructed history.
 
 ## Production adapter contract
 
@@ -42,7 +42,7 @@ Provider selection stays in retrieval code. URL safety, quotas, leases, canonica
 | Approach | Capability and decision |
 | --- | --- |
 | Existing yt-dlp and native captions | Can return descriptions, subtitles and streams when the network is accepted. Retained as the first path, with explicit partial/unavailable results. |
-| Gemini public-video input | Supplies model-derived audio/text/visual evidence without our own YouTube download. Selected fallback; hosted import/save acceptance passed for the two spoken samples. |
+| Gemini public-video input | Supplies model-derived audio/text/visual evidence without our own YouTube download. Selected fallback; CrunchWrap passed hosted import/save, while technique and insufficient-recipe outcomes remain separate. |
 | Owned, always-on residential worker | Could run the same open-source tools through another network. Requires a live network proof, uptime, polling and maintenance; not selected for a Mac-independent cloud app. |
 | Managed transcript service | Handles retrieval and optional ASR, often with simpler operations. Requires an account/key and may charge; not selected by default. |
 | YouTube Data API | Useful metadata, but caption download requires OAuth with permission to edit the video. It is not a general transcript API for arbitrary saved recipe links. |

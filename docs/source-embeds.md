@@ -35,4 +35,4 @@ This is the responsive web implementation. The future Expo app needs a reviewed 
 
 ## Verification
 
-Three component-interface tests cover tap-to-load/hide, preserved attribution, safe provider URL construction, malformed/lookalike URL fallback, and Instagram's deferred markup. They do not simulate third-party playback. Physical iPhone playback and each provider's real hosted player remain acceptance checks, especially when cookies or tracking protection are restricted.
+Three component-interface tests cover tap-to-load/hide, preserved attribution, safe provider URL construction, malformed/lookalike URL fallback, and Instagram's deferred markup. They do not simulate third-party playback. Hosted browser playback was also verified on the supplied YouTube, Instagram and TikTok samples: their video playback clocks advanced beyond zero. Physical iPhone playback, other accounts and restricted-cookie configurations remain acceptance checks.

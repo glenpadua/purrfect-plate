@@ -19,7 +19,10 @@ Clerk app `app_3JDinlimgp4znmD68XP5Y1dInNs` uses the temporary-domain developmen
 | Instagram | `DdJyDKhKk1i` passed hosted import → review → save → note edit. `/reel/` and `/p/` aliases with tracking parameters reused the same saved job/recipe. |
 | TikTok | `7351594254663159083` passed hosted retrieval and review. A normalization problem was repaired on its unsaved draft using retained source evidence, then UI save and a fresh reload passed: 12 ingredients and eight steps. This is not proof of a fresh run through the corrected normalizer. Its loaded Convex cover is a 46,840-byte WebP at 640 × 1138. |
 | YouTube CrunchWrap | A fresh hosted import produced ten ingredient lines and eight steps, then review/save passed. Recipe ID: `js7br0ycrz5cndmfvz75375hkn8e8ayy`. Source attribution and missing-detail warnings remain. |
-| YouTube wrapping tutorial | A fresh hosted import produced two generic ingredient lines and six wrapping steps. Saved as **How to wrap a burrito**, ID `js700gnh5j86y8zyb126a4fwfh8e9rca`. Unspecified fillings and amounts remain flagged. |
+| YouTube wrapping tutorial | An initial test incorrectly accepted a standalone skill as a recipe. The user corrected this; the test recipe was removed with approval. Its retained job `j978q7s7s27nkt8eczxzf17bds8e8gp9` was rechecked and rejected as `not_recipe` by the inexpensive preflight, before video analysis. The UI explains that it is a technique rather than a recipe. |
+| Recipe website | Greek chicken job `j976vr36axx9gfct1v8hffxx2d8e934a` was re-extracted, reviewed, saved and freshly reloaded with 15 ingredients, nine steps, three groups and 14 note paragraphs. Recipe: `js74wyxfsx3xpe2pka41qpj3vn8e8hka`. Publisher JSON-LD bypassed AI. A five-to-ten serving change doubled clear ingredient amounts while preserving originals. |
+| Pantry and shopping | Hosted recipe Have it → Need it → shopping list → Bought passed. Copy produced `☐ olive oil` in the clipboard; manual-copy fallback remains visible. Test entries were cleaned up. Shared access and isolation are covered by authenticated tests; two physical phones remain unverified. |
+| Inline sources and layout | YouTube, Instagram and TikTok players loaded and playback progressed in the hosted browser. Imported detail headers no longer enlarge social thumbnails. The supplied Instagram recipe and cooking controls were visually checked at 390px width; this is browser viewport evidence, not a physical iPhone test. |
 | Silent biryani | Returned **Not enough recipe details**, with an editable alternative-recipe search. Unverified visual spice guesses did not become ingredients. No recipe was saved. |
 | Cooking tools | Session-only cook mode, ingredient checklists and conservative metric/US display are deployed. Hosted browser checks passed start/next/exit and metric display on the saved TikTok recipe. Serving behavior is covered through the cooking interface; physical iPhone acceptance remains open. |
 | Minimal tags | Cleanup changed 12 of the then-55 recipes, retained every recipe, and capped tags at three. Canonical dish tags group biryani and mac and cheese without merging recipes. |
@@ -27,23 +30,22 @@ Clerk app `app_3JDinlimgp4znmD68XP5Y1dInNs` uses the temporary-domain developmen
 
 The selected YouTube fallback is Gemini's official public-video input. Hosted cloud access is now proven for the supplied videos; native yt-dlp/caption retrieval remains blocked on the observed Vercel network. Provider access does not imply complete recipe evidence. See [YouTube retrieval](youtube-retrieval.md) for costs, model choice, provenance and historical experiments.
 
-## Implemented, awaiting the final web release or acceptance
+## Latest release and remaining coverage
 
-The additive pantry schema/functions are deployed to production Convex. The simple pantry/shopping UI, inline source playback and compact imported-recipe headers await the final web release and hosted checks. The pantry uses presence rather than quantities; photo/voice capture is proposed future work. See [pantry](pantry.md).
+The pantry, inline sources, compact headers, layout fixes and guardrail correction are deployed. Main commit `4caa144` passed CI and produced the ready web deployment `purrfect-plate-j0lvv4fsg-glen-paduas-projects.vercel.app`, aliased to the hosted app. The pantry uses presence rather than quantities; photo/voice capture is proposed future work. See [pantry](pantry.md).
 
-Insufficient-evidence failures now retain bounded evidence, provider usage, warnings and citations in the worker's failure audit. Extraction-interface tests cover both no-readable-evidence and normalized-empty outcomes. The observed biryani failure predates this fix and has no retained failure audit; historical data is not retroactively reconstructed. Verify the new failure audit after the web release.
+Insufficient-evidence failures retain bounded evidence, provider usage, warnings and citations. The biryani recheck remained insufficient and retained 17 evidence entries in a 7,129-character audit, including Gemini and normalization usage. No visual guesses became a recipe. Historical missing data was not reconstructed; this is a new observed attempt.
 
-Publisher ingredient groups and notes are implemented. A parser replay of the actual Greek chicken page returned 15 ingredients, nine publisher steps, three ingredient groups and 14 note paragraphs. The older unsaved hosted draft remains stale and is not automatically rewritten. A fresh hosted website import/review/save check is still required.
+Unsaved drafts can now explicitly re-extract their source, replacing the draft under a last-update check without creating a duplicate job or overwriting a saved recipe. The Greek chicken acceptance above exercised that operation. Replaced unsaved covers are removed from storage.
 
-The feature code and tests are organized around authenticated data operations, extraction and cooking interfaces. The latest stable verification passed 94 TypeScript tests across 19 files, nine Python tests, TypeScript checking and a local Webpack production build. Hosted acceptance of the pending web changes remains separate.
+The feature code and tests are organized around authenticated data operations, extraction and cooking interfaces. The latest verification passed 100 TypeScript tests across 19 files, nine Python tests, TypeScript checking, a local Webpack production build and hosted CI/Turbopack build. Live AI checks rejected the actual tutorial narration and accepted partial genuine recipe evidence.
 
 ## Remaining acceptance and launch work
 
-- Release and verify pantry add/correct/shop/purchase/copy flows, inline playback and compact headers on the hosted app.
 - Confirm actual email-code sign-in and Millusha's join into the same library.
 - Test both actual iPhones. Desktop browser or emulator results are not physical-device evidence.
-- Verify fresh hosted website groups/notes and TikTok normalization without a draft repair.
-- Verify the new failure audit, unavailable/non-recipe paths and broader platform samples; the current YouTube success is sample-specific.
+- Broaden fresh TikTok normalization coverage without a draft repair.
+- Broaden unavailable-source and platform coverage; current YouTube and embed success is sample-specific.
 - Configure a reachable development import worker. Development Convex currently points at the production worker, which cannot resolve development job IDs; development CRUD is usable, development imports are not accepted.
 - Address the launch constraints recorded in architecture.md: library pagination, orphaned-image cleanup, dependency advisories, production Clerk setup and wider operational monitoring.
 - Keep native Expo implementation and photo/voice pantry updates as documented future work until separately built and tested.

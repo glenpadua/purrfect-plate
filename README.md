@@ -42,7 +42,7 @@ New images are metadata-free WebP, at most 1440 pixels on either side and 350,00
 
 ## Import behaviour
 
-Paste a public HTTPS recipe link, wait for a durable draft, review its ingredients/steps/warnings and save. Repeated canonical links reuse a job; repeated saves return one recipe. Wrong target shapes reject early; a small relevance check screens unrelated content. Missing source facts are flagged rather than invented. Tags stay at three or fewer, with dish tags grouping variants. Original evidence is kept separately from editable recipe content. Visual guesses never become recipe facts.
+Paste a public HTTPS recipe link, wait for a durable draft, review its ingredients/steps/warnings and save. Repeated canonical links reuse a job; repeated saves return one recipe. Wrong targets and clear standalone technique tutorials reject early; final source classification catches tutorials missed by metadata. Partial real recipes remain reviewable. Missing facts are flagged rather than invented. Tags stay at three or fewer, with dish tags grouping variants. Original evidence stays separate from editable content. Visual guesses never become recipe facts. Unsaved drafts can explicitly re-extract the source under a last-update check.
 
 The local extraction bench remains at /extraction-prototype; its API is disabled on Vercel. Detailed earlier experiments are in docs/extraction-prototype.md.
 
