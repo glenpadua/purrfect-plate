@@ -1,6 +1,140 @@
 # Mobile foundation
 
-Research, code inspection, and read-only Mac tool checks: 12 September 2026. This is a proposed implementation and setup guide. No mobile app has been created, no tools or dependencies installed, no Apple enrollment or purchase performed, and no phone validation completed.
+Implementation started 12 September 2026 in the isolated `41d6` worktree. The native app now exists under `apps/mobile`; see the current implementation record below. The shared web UI was subsequently deployed at Glen's explicit request; see the release record below. No Apple enrollment, purchase, App Store submission, or physical-phone validation has been performed.
+
+## Hosted shared UI release — 12 September 2026
+
+Follow-up release `dpl_9BUhbVkUmzeCZk9GQY4YpQNcMJAy` is live at the same production URL (Vercel build https://purrfect-plate-epjk76jzw-glen-paduas-projects.vercel.app). Both development and production Convex received the additive clearing API/index. Source remains in the uncommitted worktree.
+
+Follow-up usability update: the shared app now clears failed imports from the list and detail screen with Undo, filters the library by `origin: imported` alongside search/tags, and offers import-from-link above the manual Add Recipe form. Clearing soft-hides the job with `dismissedAt`; the new indexed list excludes hidden jobs before its 30-item limit. Reopening the same source restores its durable job, retaining retry cooldowns and usage. Authentication, library ownership, and failed-only status are enforced in `imports.setDismissed`. Saved import notes are collapsed after the recipe rather than rendered above it. Ingredient checkboxes use bordered squares and drawn checkmarks with checked accessibility state.
+
+Follow-up checks: all 104 backend/web tests and four native component tests passed, mobile TypeScript and the iOS export passed. Production clear/Undo succeeded from both list and failed detail, restoring the tested job afterward. The live Imported filter showed five saved link imports and combined with a mutton search to show one. Seven source notes on Simple Mutton Biryani were hidden until explicitly expanded, then collapsed again. Checkbox appearance and toggling were verified on web, and the iOS simulator confirmed native checked state, the Imported filter, and Add Recipe's import navigation. These checks do not constitute physical-device acceptance.
+
+Glen authorized deploying the shared UI to test its mobile feel on the web. Production is live at https://purrfect-plate-theta.vercel.app, deployment `dpl_G8hgdLLU86uGEoCJvnAYukHhCL1F` (https://purrfect-plate-3880135ft-glen-paduas-projects.vercel.app). Vercel built with production environment settings, then promotion assigned the live domain. This was a direct CLI deployment from the worktree; source changes have not yet been committed/pushed to `main`.
+
+`pnpm build` now exports Expo's SPA and builds Next for retained server endpoints. Product URLs and asset paths are rewritten to `public/universal`; existing imports and `/api/*` remain on the authenticated production server. The exporter disables Expo dotenv loading, maps only the existing public web settings, and checks the production Convex hostname. Production Convex also received the backward-compatible `recipes.update` nullable-time change; no indexes were deleted. No production data migration or development tunnel change was made.
+
+Verification: 102 web/backend tests passed, the local webpack production build passed, and Vercel's full Expo plus Next Turbopack build passed. The live browser reused the existing Clerk sign-in and loaded 56 production recipes. HTTP checks confirmed SPA entry/deep links for `/`, `/recipe/test/edit`, `/import?job=test`, `/pantry` and `/account`, production Convex in the public bundle with no dev hostname, and HTTP 401 for an unauthenticated import-worker POST. Historical local-only/no-production statements below describe earlier checkpoints and are superseded by this release record. At 390px phone width, the live library photos/cards and bottom navigation were visually verified, a production recipe deep link survived reload, and import history plus the shared pantry/shopping screen loaded. This release did not repeat fresh provider extraction or all write flows against production. Physical iPhone installation, Android and provider playback acceptance remain separate.
+
+## Universal UI correction — 12 September 2026
+
+The first simulator implementation shared colors and domain code but still maintained two different product UIs. That did not meet Glen's priority. The chosen boundary is now **one Expo Router application, with React Native Web rendering the same feature screens in browsers**. `apps/mobile` is a historical directory name; it is the universal product application, not a second mobile-only design.
+
+Shared source includes `ui/product-shell.tsx`, `ui/index.tsx`, library cards/filters/pantry ranking/dinner suggestion, recipe detail/cooking, recipe form/editor, import inbox/review, pantry/shopping and account. There are no `.web` copies of these product screens. The existing Outfit font is bundled for both platforms. Cream/rose colors, photo-led cards, spacing, controls and navigation come from those same components. Phone layouts use two card columns and bottom navigation; larger screens use three/four columns, top navigation and a two-column recipe detail. Native safe areas and browser chrome naturally occupy different space.
+
+Platform adapters are deliberately small:
+
+- `features/auth/sign-in.tsx` / `.web.tsx`: Clerk hosted native authentication versus Clerk's browser component. The SDK's token cache uses SecureStore on native and its normal browser session on web. Convex authorization is unchanged.
+- `lib/recipe-photo.ts` / `.web.ts`: native photo picker/manipulator versus browser file picker/canvas. Both enforce the same source limit, WebP encoding attempts and stored-image budget. Both use the same authenticated upload/save contract.
+- `features/recipe-source/source-frame.tsx` / `.web.tsx`: native WebView versus browser provider embeds, with shared load/hide controls in `source-embed.tsx`. Source labels and original links are shared, and URL validation/provider mapping is shared with the legacy Next renderer through `lib/recipe-source.ts`.
+
+The following local URLs are supported by the universal router: `/`, `/add`, `/recipe/:id`, `/recipe/:id/edit`, `/import`, `/import/:id`, `/pantry`, `/account`. Earlier native `/edit?id=...` and `/imports` routes remain compatible; legacy `/import?job=...` links redirect to the shared review route. Web output is a client-rendered SPA (`web.output: single`): a future host must serve its entry HTML for product deep links while routing `/api/*` to the retained server. This is a deliberate choice for the authenticated private library; it does not provide Next's request-time HTML rendering or public recipe SEO.
+
+### Local validation and restart
+
+```bash
+pnpm product:web
+# http://127.0.0.1:8082
+# Open the same server in an already booted iPhone simulator:
+xcrun simctl openurl booted exp://127.0.0.1:8082
+pnpm mobile:typecheck
+pnpm --filter @purrfect-plate/mobile test
+pnpm --filter @purrfect-plate/mobile export:web --max-workers 2
+pnpm --filter @purrfect-plate/mobile export:ios --max-workers 2
+```
+
+Use one Metro process for the browser/native comparison. Restart Metro after changing workspace dependency links or introducing new shared package files if it retains a stale module index (`--clear`). The separate `pnpm mobile:ios` helper still defaults to port 8081.
+
+Verified in the universal correction: both platforms displayed the same live development library and recipe detail, and the desktop browser layout was inspected at 1280 pixels. Phone browser layout was inspected at 402 pixels. The shared navigation, fonts, card layouts and controls match apart from OS chrome/safe areas. Screenshots are in `outputs/universal-ui/comparison.html`.
+
+Browser checks exercised search, filtered dinner suggestion/acceptance (which increments cooked count), portions and US units, reset, cook mode, manual creation/editing, clearing optional time metadata, authenticated compressed photo upload, saved-import URL deduplication, pantry availability, bulk shopping additions, bought reconciliation, unclear ingredient naming and clipboard copying. The new browser test recipe is `Browser kitchen check`; its cover is a synthetic two-color fixture, not food photography. The simulator displayed that new recipe and the shopping changes, and its Have it action restored flour to the shared pantry. Native sharing opened the iOS sheet with Copy available; the sheet was cancelled, so final clipboard contents on iOS were not asserted. Simulator sample recipe cooked count is now two; egg/flour are available and milk/pepper remain on the development shopping list.
+
+Inline-source controls now share one component. A native WebView adapter loaded the existing YouTube test fixture thumbnail and controls after supplying the installed app identity in the Referer header, as required by [YouTube native player guidance](https://developers.google.com/youtube/terms/required-minimum-functionality#embedded-player-api-client-identity). The temporary source test route was removed. Actual playback was not asserted; the Codex browser embed remained blank, and TikTok/Instagram playback is unverified. The original-source link remains available. Native WebView is the Expo-compatible 13.16.1 package.
+
+An Expo Go development reload reported a missing ExpoAsset native module. Terminating and reopening Expo Go restored the authenticated app. Browser automation clearing an input with fill("") did not deliver the edit; select-all and Backspace did, and saved metadata clearing was verified.
+
+Final checks after the shared pantry and source adapters: mobile TypeScript, all four native component tests, web export (1.8 MB) and iOS export (4.6 MB) passed. Existing Next production build and backend tests passed earlier in this correction; no further Next/server implementation was changed in this functional-parity pass.
+
+**Fresh development imports currently blocked:** the earlier local worker and temporary tunnel stopped, and the old hostname no longer resolves. The authenticated loopback worker has been restarted. Automatic approval review rejected creating a replacement public tunnel because approval covered the expired address only. Do not redirect callbacks or claim a fresh extraction passes until replacement approval is obtained. Production was not changed.
+
+### Migration implications and release boundary
+
+The hosted Next.js UI, production Convex deployment, production recipe data and production worker URL remain in place. We are not embedding React Native Web inside Next 16 App Router and have not installed an old Next/Expo adapter. The existing Next routes and Python extraction service continue to own server-only extraction and credentials. The development import callback still uses the specifically approved temporary worker tunnel documented below.
+
+The original Next UI remains a compatibility implementation during validation. It must not receive a second restyling intended to mimic the new universal UI. Once parity, authentication, deep-link rewrites, provider embeds, accessibility and hosted import routing are verified, a controlled deployment can serve Expo's web bundle at the existing product URLs while preserving API routing. Keep the current deployment available for rollback.
+
+Remaining release parity work must be explicit: dark mode and animated cat assets are deferred by Glen. Bulk shopping, direct pantry availability, marking out, reconfirming presence, copy/share, unclear ingredient entry and adjustment reset now live in the shared UI. Physical iPhones, Android and provider playback reliability still need acceptance. Library filtering currently uses the existing authenticated 500-row compatibility query so text/tag filtering and pantry ranking behave like the legacy web UI; pagination across larger libraries needs a proper shared query design before lifting that limit. No production replacement is authorized by these local checks.
+
+## Current implementation and verification
+
+**Native core flows verified on 12 September 2026.** Xcode 26.6 first launch and the license are complete. iOS 26.5 (23F77) is installed; the app runs in Expo Go on iPhone 17 Pro (`5CFE213A-9801-4E27-A505-712E3C20F029`). After Glen unlocked the Mac and completed email verification, the native app authenticated and loaded the development shared library. All simulator evidence below comes from native interaction, not an Expo web preview.
+
+Implemented native screens: Clerk hosted Google/email login and secure token cache; shared-library membership; paginated recipe search/detail; manual creation/editing and photo selection; durable import inbox/review/save/retry/re-extraction; cooking checklist, servings, metric/US display, step navigation and keep-awake; favourites/cooked count; shared pantry/shopping reconciliation; account/sign-out. Source attribution opens the original in the platform browser. Native embedded social players, share extensions, offline downloads and persisted cooking sessions remain follow-up work. Sign-out/account switching, import failure/retry branches, Android and physical iPhones have not been exercised in this simulator acceptance run.
+
+Architecture: Expo SDK 57.0.22, React Native 0.86.3 and React 19.2.3. The Next.js app remains at the root with React 19.3.0. pnpm uses an **isolated workspace layout** so the two React runtimes do not enter one bundle; React Native is pinned across transitive dependencies. Expo's default monorepo autolinking resolves native modules. `packages/recipe-core` intentionally exposes existing pure cooking, ingredient identity, grouped text and image policy helpers plus a separate generated API/types entry point. Feature data modules own Convex hooks. Native UI primitives have no backend dependency. `palette.json` is shared by native and generated web CSS (`pnpm design:tokens`), preserving the existing warm palette.
+
+Development configuration: `apps/mobile/.env.local` contains only the existing public Clerk key and development Convex URL. Clerk's public Native API setting was verified enabled. Both `CONVEX_URL` and `NEXT_PUBLIC_CONVEX_URL` in the private worker configuration point to `basic-poodle-462`. No provider, deploy or worker secrets belong in the mobile app.
+
+Checks completed during implementation:
+
+- Original web baseline: 100 tests passed.
+- Shared mobile contract: red/green verified authenticated edit preserves original provenance and cooking transforms leave source quantities unchanged.
+- Native React Native Testing Library cooking test: red/green verified portions, units and step navigation.
+- After isolated dependencies: Expo Doctor **21/21 passed**, native test passed, **101 web/backend tests passed**, Next.js production build passed with font-download network access.
+- iOS Metro/Hermes bundle exported successfully, including native photos and editor changes (4.6 MB, 1410 modules).
+- Added a further red/green authenticated backend test for explicitly clearing cooking times with `null`; the change is additive and was synced only to development with `pnpm exec convex dev --once`.
+- Final code checks: 102 web/backend tests, two native component tests, mobile TypeScript and the web production build pass. The exported bundle contains none of the configured server-secret values. The final iOS export passed (4.6 MB, 1415 modules). Automated checks are supplemented by the native interaction record below.
+
+### Native interaction record
+
+- Signed in with the existing Clerk account and loaded the development shared library. The first browser attempt reached the account portal without activating the app; returning to the app and starting hosted auth again completed the handoff. Avoid refreshing the native bundle while browser authentication is pending.
+- Created `Simulator kitchen check` through the native editor, with ingredients, three steps and kitchen notes. Edited its name/tags, explicitly cleared a preparation time and retained its cooking time.
+- Selected the simulator's sample lemon photo through the iOS photo picker, compressed/uploaded it and observed the saved image on both detail and library cards. This sample image is test media, not evidence of the recipe's appearance.
+- Changed four servings to eight and switched to US units: original `250 g flour` displayed approximately `17.64 oz`; the editor retained the original four servings and amounts. Checked an ingredient, traversed all three cook steps, finished cooking, favourited the recipe and separately incremented its cooked count to one.
+- Added flour from the recipe to shopping, then marked it bought: shopping became empty and pantry showed flour available.
+- Opened the named recipe deletion confirmation and cancelled it. Permanent deletion was not executed.
+- Imported `https://www.bbcgoodfood.com/recipes/easy-pancakes` through the approved development tunnel. The job reached review with six ingredients, five method steps and `Makes 12`; saved it to the library and opened its original source in iOS Safari. This extraction omitted author and preparation/cooking metadata, which remain blank rather than invented. `Makes 12` remains a yield, and portion controls correctly require an unambiguous serving count.
+- Terminated Expo Go and reopened it using `pnpm mobile:ios`: the secure session restored without another login, and both saved recipes remained visible. Search for `Simulator` returned the edited recipe.
+- The development recipe, imported pancakes and flour pantry entry remain available for inspection. Production data was not used for these writes.
+
+### Start and restart on this Mac
+
+From the repository root:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm mobile:typecheck
+pnpm --filter @purrfect-plate/mobile test
+pnpm mobile:ios
+```
+
+`pnpm mobile:ios` uses the checked-in `apps/mobile/scripts/start-ios.mjs` helper to start/reuse Metro and open the native app through the installed Expo Go in the selected iOS Simulator. It avoids the Expo CLI Apple Events window-activation helper, which failed on this Mac after launching and stopped Metro. Metro can also be run independently with `pnpm mobile --localhost`. Hosted Clerk authentication works in Expo Go; custom native sign-in and share extensions require a later development build. No Apple paid membership is needed for the simulator phase. For an already-running Metro server at `http://127.0.0.1:8081`, the same command reuses it and opens Expo Go without starting a second server. The start scripts force IPv4 DNS resolution because Node otherwise bound localhost to IPv6 while Expo opened an IPv4 simulator URL. CLI simulator commands:
+
+```bash
+xcrun simctl list devices available
+xcrun simctl boot 5CFE213A-9801-4E27-A505-712E3C20F029
+pnpm mobile:ios
+```
+
+Metro is currently running on loopback port 8081 and serving Expo Go in the booted iPhone 17 Pro / iOS 26.5 simulator. The native screens and core flows listed above have been inspected. The restart helper was exercised against the already-running Metro server; its cold Metro-start branch has not been separately exercised.
+
+### Development imports: approved route and verified round-trip
+
+Initial read-only inspection found development Convex using the **production** web worker URL. That worker cannot resolve development job IDs. The new `pnpm import:worker` command runs only the existing import route on `127.0.0.1:3103`; it refuses a production backend, checks the machine header before reading the body, caps requests at 2048 bytes and rejects all other paths. It does not expose Next.js development tooling. Local checks returned 401 without authentication and 404 for other paths; development and local worker secrets match.
+
+An official Cloudflare CLI was downloaded temporarily to `/private/tmp/purrfect-plate-tools/cloudflared` after Homebrew was blocked by the Xcode license. A temporary tunnel was opened to the route-only worker. Automatic approval review initially rejected updating development Convex to the temporary URL. Glen then explicitly approved the exact destination, and `pnpm exec convex env set IMPORT_WORKER_URL https://name-sociology-cooperation-piano.trycloudflare.com/api/internal/imports` succeeded on **development only**. The tunnel returned 401 for an unauthenticated POST and 404 for other paths. The native BBC Good Food import, review and save round-trip passed through this route. A changed tunnel destination needs explicit approval; never silently redirect callbacks elsewhere.
+
+Worker restart (the tunnel URL changes each restart; it needs corresponding approved development configuration):
+
+```bash
+pnpm import:worker
+/private/tmp/purrfect-plate-tools/cloudflared tunnel --url http://127.0.0.1:3103 --no-autoupdate
+```
+
+The shared hosted production library, web deployment and production worker configuration have not been changed. Development uses its own existing library data; production shared-library parity is a later controlled preview configuration.
+
+## Prior planning and later physical-phone distribution
+
 
 **Recommendation: build an Expo + React Native app for iOS and Android, using the existing Clerk identity and Convex backend.** Build native screens around the current recipe/import contracts. Keep the Next.js web app running alongside it. This lets the two of you test the same shared library on web and phones while the mobile experience develops.
 

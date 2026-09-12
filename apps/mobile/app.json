@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Purrfect Plate Dev",
+    "slug": "purrfect-plate",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.purrfectplate.mobile.dev"
+    },
+    "android": {
+      "package": "com.purrfectplate.mobile.dev"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "@clerk/expo",
+      "expo-font"
+    ],
+    "scheme": "purrfectplate-dev"
+  }
+}

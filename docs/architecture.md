@@ -81,3 +81,14 @@ Keep retrieval, normalization, image processing, durable job state and presentat
 ## Minimal tags
 
 `canonicalizeRecipeTags(name, tags)` is used by saving and normalization. Keep at most three supplied meaningful tags, normalize synonyms, remove generic filler, and add an unequivocal biryani/mac-and-cheese family from the title. Do not infer dietary labels. Recipes remain separate; tags provide simple grouping. The audited production cleanup changed 12 of 55 recipes, retained all 55, and privately backed up the original rows. The internal maintenance mutation compares timestamps/tags before writing to preserve concurrent edits.
+
+
+## Universal product UI boundary (12 September 2026)
+
+The product UI is moving to the Expo application in `apps/mobile`, targeting native iOS/Android and browsers with React Native Web. The folder name is historical. Expo Router route files compose the same feature screens for all targets; there are no parallel web/native copies of library, detail, cooking, editor, imports, pantry or account screens. `ui/product-shell.tsx` owns responsive navigation, and `ui/index.tsx` owns the shared typography and controls. Browser breakpoints change layout, not feature ownership.
+
+Keep platform differences at authentication, device/browser media handling and provider embeds. Both platforms use Convex feature hooks and the generated API contract. `packages/recipe-core` continues to expose pure domain helpers, image policy, source URL validation and the existing palette. Outfit font assets are loaded by the universal root so browser/native text metrics share the same source.
+
+The root Next 16 App Router application stays operational during this migration. Its server APIs and extraction boundaries are not imported into Metro. No legacy Next/Expo adapter is used. Following Glen's deployment request on 12 September 2026, the production site serves the Expo web SPA for product paths while preserving `/api/*` on the existing server. `scripts/build-product-web.mjs` exports the client with the deployment's public Convex/Clerk configuration into ignored `public/universal`; `next.config.mjs` rewrites product deep links and exported assets. The previous Vercel deployment remains available for rollback. SPA rendering trades request-time HTML/SEO for one authenticated application implementation. Next can eventually be removed once its remaining server endpoints move to another host/runtime.
+
+See [the mobile/universal plan](mobile-plan.md#universal-ui-correction--12-september-2026) for platform adapters, local commands, verification evidence, known parity gaps and the 500-row compatibility query limit. Local browser and simulator success are not authorization to replace production.

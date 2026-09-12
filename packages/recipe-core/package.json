@@ -1,0 +1,10 @@
+{
+  "name": "@purrfect-plate/recipe-core",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    ".": "./index.ts",
+    "./api": "./api.ts",
+    "./theme": "./theme.ts"
+  }
+}

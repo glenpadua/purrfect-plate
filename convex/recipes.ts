@@ -83,10 +83,10 @@ export const registerUpload = mutation({ args: { storageId: v.id("_storage") }, 
   return null
 }})
 export const update = mutation({
-  args: { id: v.id("recipes"), name: v.optional(recipeContent.name), imageStorageId: recipeContent.imageStorageId, tags: v.optional(recipeContent.tags), note: recipeContent.note, ingredients: recipeContent.ingredients, instructions: recipeContent.instructions, recipeNotes: recipeContent.recipeNotes, servings: recipeContent.servings, prepMinutes: recipeContent.prepMinutes, cookMinutes: recipeContent.cookMinutes, isFavorite: v.optional(v.boolean()) },
+  args: { id: v.id("recipes"), name: v.optional(recipeContent.name), imageStorageId: recipeContent.imageStorageId, tags: v.optional(recipeContent.tags), note: recipeContent.note, ingredients: recipeContent.ingredients, instructions: recipeContent.instructions, recipeNotes: recipeContent.recipeNotes, servings: recipeContent.servings, prepMinutes: v.optional(v.union(v.number(), v.null())), cookMinutes: v.optional(v.union(v.number(), v.null())), isFavorite: v.optional(v.boolean()) },
   returns: v.null(), handler: async (ctx, { id, ...updates }) => {
     const { recipe, member } = await owned(ctx, id)
-    const patch = Object.fromEntries(Object.entries(updates).filter(([, value]) => value !== undefined))
+    const patch = Object.fromEntries(Object.entries(updates).filter(([, value]) => value !== undefined).map(([key, value]) => [key, value === null ? undefined : value]))
     const cleaned = cleanContent({ ...recipe, ...patch })
     // Apply only requested fields, using the same normalization as creation.
     const normalizedPatch = Object.fromEntries(Object.keys(patch).map(key => [key, cleaned[key as keyof typeof cleaned]]))

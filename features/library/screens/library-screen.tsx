@@ -31,7 +31,7 @@ export function LibraryScreen() {
   if (usePantry && pantryState) rankedRecipes?.sort((a, b) => (b.coverage.present / (b.coverage.total || 1)) - (a.coverage.present / (a.coverage.total || 1)) || a.index - b.index)
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,oklch(0.99_0.012_78),oklch(0.97_0.02_48)_42%,var(--background))] text-foreground dark:bg-[linear-gradient(180deg,oklch(0.2_0.018_42),oklch(0.16_0.014_46)_42%,var(--background))]">
+    <main className="min-h-screen bg-[linear-gradient(180deg,var(--kitchen-background),var(--kitchen-wash)_42%,var(--background))] text-foreground dark:bg-[linear-gradient(180deg,oklch(0.2_0.018_42),oklch(0.16_0.014_46)_42%,var(--background))]">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-3 pb-28 pt-4 sm:px-6 lg:px-8">
         <header className="flex flex-col gap-5 pt-3 sm:pt-8">
           <div className="flex items-center gap-3 pr-14">

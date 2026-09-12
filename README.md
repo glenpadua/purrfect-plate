@@ -24,11 +24,13 @@ pnpm test:run
 pnpm build
 ```
 
-Stop the dev server before changing dependencies. pnpm uses a hoisted layout; installing packages can move modules while Webpack still references old paths. Restart after installation. If an interrupted upgrade leaves stale paths, stop the server, move .next aside, rebuild, then restart.
+Stop the dev server before changing dependencies. pnpm uses an isolated workspace layout to keep native and web React runtimes separate; installing packages can move modules while Webpack still references old paths. Restart after installation. If an interrupted upgrade leaves stale paths, stop the server, move .next aside, rebuild, then restart.
 
 ## Hosted pilot
 
 Web: https://purrfect-plate-theta.vercel.app
+
+The hosted product screens use the same Expo/React Native UI as the iOS app. `pnpm build` exports that web client, then builds Next.js for the existing server APIs. Next rewrites product deep links to the exported SPA; `/api/*` remains server-side. The release script derives Expo's public configuration from the web deployment's `NEXT_PUBLIC_*` variables and refuses a development Convex URL in production. Local Expo continues using its separate development configuration.
 
 Production Convex: spotted-gazelle-950. Development: basic-poodle-462. Private media project: purrfect-plate-media.
 
@@ -59,6 +61,6 @@ The local extraction bench remains at /extraction-prototype; its API is disabled
 
 Run `pnpm test:run` and `pnpm exec tsc --noEmit` before deployment. Use the production build for route and bundling checks; tests do not substitute for hosted sign-in, source extraction or real-device acceptance. Deploy additive Convex changes before the web build. Keep credentials and generated evidence out of Git.
 
-## Mobile reuse
+## Universal product UI
 
-Mobile clients will use the same Clerk identity and Convex functions. Extraction and AI stay server-side. The native client needs its own UI, share entry point and image upload integration; see [the mobile plan](docs/mobile-plan.md).
+The Expo app under `apps/mobile` renders the same product screens on iOS and in browsers through React Native Web, using the same Clerk identity and Convex functions. Run `pnpm product:web` for the local browser preview on port 8082; an already booted iOS simulator can open that same Metro server with `xcrun simctl openurl booted exp://127.0.0.1:8082`. Authentication, photo selection and source embeds use small platform adapters. Extraction and AI stay server-side, and the hosted Next.js UI remains in place during local validation. See [the mobile plan](docs/mobile-plan.md) for verification results and remaining parity work.

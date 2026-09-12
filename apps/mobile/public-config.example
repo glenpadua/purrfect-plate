@@ -1,0 +1,3 @@
+# Copy only these public values into apps/mobile/.env.local.
+EXPO_PUBLIC_CONVEX_URL=https://basic-poodle-462.convex.cloud
+EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=your-existing-clerk-publishable-key

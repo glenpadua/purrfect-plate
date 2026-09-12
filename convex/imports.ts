@@ -35,12 +35,27 @@ export const start = mutation({
     url.hash = ""
     const key = sourceKey(url.href)
     const existing = await ctx.db.query("imports").withIndex("by_library_source", q => q.eq("libraryId", member.libraryId).eq("sourceKey", key)).unique()
-    if (existing) return existing._id
+    if (existing) {
+      if (existing.dismissedAt !== undefined) await ctx.db.patch(existing._id, { dismissedAt: undefined })
+      return existing._id
+    }
     await quota(ctx, member.libraryId)
     const now = Date.now()
     const id = await ctx.db.insert("imports", { libraryId: member.libraryId, createdBy: member.userId, url: url.href, sourceKey: key, platform: platformFor(url), status: "queued", phase: "Queued for import", attempt: 1, createdAt: now, updatedAt: now })
     await ctx.scheduler.runAfter(0, internal.importWorker.dispatch, { id, attempt: 1 })
     return id
+  },
+})
+export const setDismissed = mutation({
+  args: { id: v.id("imports"), dismissed: v.boolean() }, returns: v.null(),
+  handler: async (ctx, { id, dismissed }) => {
+    const member = await requireMembership(ctx)
+    const job = await ctx.db.get(id)
+    if (!job || job.libraryId !== member.libraryId) throw new ConvexError("Import not found.")
+    if (job.status !== "failed" || job.recipeId) throw new ConvexError("Only failed imports can be cleared.")
+    // Preserve attempt and updatedAt so clearing cannot bypass retry limits.
+    await ctx.db.patch(id, { dismissedAt: dismissed ? Date.now() : undefined })
+    return null
   },
 })
 export const retry = mutation({
@@ -54,7 +69,7 @@ export const retry = mutation({
     if (job.attempt % 3 === 0 && Date.now() - job.updatedAt < 15 * 60_000) throw new ConvexError("This link has failed three times. Wait 15 minutes before trying again.")
     await quota(ctx, member.libraryId)
     const attempt = job.attempt + 1
-    await ctx.db.patch(id, { relevanceOverride: continueAnyway || job.relevanceOverride || undefined, status: "queued", phase: "Queued to retry", attempt, error: undefined, failureCode: undefined, searchQuery: undefined, updatedAt: Date.now() })
+    await ctx.db.patch(id, { dismissedAt: undefined, relevanceOverride: continueAnyway || job.relevanceOverride || undefined, status: "queued", phase: "Queued to retry", attempt, error: undefined, failureCode: undefined, searchQuery: undefined, updatedAt: Date.now() })
     await ctx.scheduler.runAfter(0, internal.importWorker.dispatch, { id, attempt })
     return null
   },
@@ -78,7 +93,7 @@ export const list = query({
   args: {}, returns: v.array(summary),
   handler: async ctx => {
     const member = await requireMembership(ctx)
-    const jobs = await ctx.db.query("imports").withIndex("by_library_created", q => q.eq("libraryId", member.libraryId)).order("desc").take(30)
+    const jobs = await ctx.db.query("imports").withIndex("by_library_dismissed_created", q => q.eq("libraryId", member.libraryId).eq("dismissedAt", undefined)).order("desc").take(30)
     return jobs.map(j => ({ id: j._id, url: j.url, platform: j.platform, status: j.status, phase: j.phase, createdAt: j.createdAt, updatedAt: j.updatedAt, attempt: j.attempt, recipeId: j.recipeId, error: j.error, failureCode: j.failureCode, searchQuery: j.searchQuery, name: j.draft?.name }))
   },
 })

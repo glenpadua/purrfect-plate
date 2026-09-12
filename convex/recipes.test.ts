@@ -17,6 +17,15 @@ async function setup() {
 }
 
 describe("private shared recipe library", () => {
+  test("editing can explicitly clear cooking times without changing other recipe content", async () => {
+    const { glen, millusha } = await setup()
+    const id = await glen.mutation(api.recipes.create, { name: "Rice", tags: [], prepMinutes: 10, cookMinutes: 20 })
+    await millusha.mutation(api.recipes.update, { id, prepMinutes: null, cookMinutes: null })
+    const recipe = await glen.query(api.recipes.get, { id })
+    expect(recipe?.name).toBe("Rice")
+    expect(recipe?.prepMinutes).toBeUndefined()
+    expect(recipe?.cookMinutes).toBeUndefined()
+  })
   test("editing grouped recipes preserves untouched source evidence and publisher notes", async () => {
     const { glen, millusha } = await setup()
     const original = [{ text: "1 cup rice\nrinsed and drained", group: "Rice", sourceIds: ["publisher"] }]
