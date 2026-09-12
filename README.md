@@ -68,6 +68,8 @@ The local extraction CLI and `/api/extraction-prototype` remain available for de
 
 Run `pnpm test:run`, `pnpm test:mobile` and `pnpm typecheck` before deployment. Use the production build for route and bundling checks; tests do not substitute for hosted sign-in, source extraction or real-device acceptance. Deploy additive Convex changes before the web build. Keep credentials and generated evidence out of Git.
 
+After **every release**, verify production Convex independently with `pnpm verify:production:convex`, wait for GitHub CI on the exact pushed commit, check the Vercel production alias, and exercise the affected hosted feature. A successful web deployment does not prove a backend deployment or CI passed. Follow the [release verification checklist](docs/production-plan.md#required-release-verification).
+
 ## Where to make changes
 
 | Change | Source |

@@ -40,7 +40,10 @@ jobs:
         run: pnpm test:run
 
       - name: Check types
-        run: pnpm exec tsc --noEmit
+        run: pnpm typecheck
+
+      - name: Test shared Expo UI
+        run: pnpm test:mobile
 
       - name: Setup Python
         uses: actions/setup-python@v5

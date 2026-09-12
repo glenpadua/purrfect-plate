@@ -64,6 +64,9 @@ importers:
       typescript:
         specifier: 5.7.2
         version: 5.7.2
+      vite:
+        specifier: 7.3.1
+        version: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1)
       vite-tsconfig-paths:
         specifier: ^6.1.1
         version: 6.1.1(typescript@5.7.2)(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1))
@@ -11133,6 +11136,10 @@ snapshots:
     optionalDependencies:
       picomatch: 4.0.3
 
+  fdir@6.5.0(picomatch@4.0.7):
+    optionalDependencies:
+      picomatch: 4.0.7
+
   fetch-nodeshim@0.4.10: {}
 
   fill-range@7.1.1:
@@ -13651,8 +13658,8 @@ snapshots:
   vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1):
     dependencies:
       esbuild: 0.27.3
-      fdir: 6.5.0(picomatch@4.0.3)
-      picomatch: 4.0.3
+      fdir: 6.5.0(picomatch@4.0.7)
+      picomatch: 4.0.7
       postcss: 8.5.28
       rollup: 4.59.0
       tinyglobby: 0.2.15

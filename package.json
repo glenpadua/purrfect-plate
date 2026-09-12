@@ -30,6 +30,7 @@
     "convex:configure": "convex dev --configure",
     "convex:dev": "convex dev",
     "convex:codegen": "convex codegen",
+    "verify:production:convex": "node scripts/verify-production-convex.mjs",
     "mobile": "pnpm --filter @purrfect-plate/mobile start",
     "mobile:ios": "pnpm --filter @purrfect-plate/mobile ios",
     "mobile:typecheck": "pnpm --filter @purrfect-plate/mobile typecheck",
@@ -59,6 +60,7 @@
     "convex-test": "^0.0.58",
     "tsx": "^4.23.13",
     "typescript": "5.7.2",
+    "vite": "7.3.1",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.0.18"
   }

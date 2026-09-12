@@ -33,7 +33,21 @@ Clerk app `app_3JDinlimgp4znmD68XP5Y1dInNs` uses the temporary-domain developmen
 
 The selected YouTube fallback is Gemini's official public-video input. Hosted cloud access is now proven for the supplied videos; native yt-dlp/caption retrieval remains blocked on the observed Vercel network. Provider access does not imply complete recipe evidence. See [YouTube retrieval](youtube-retrieval.md) for costs, model choice, provenance and historical experiments.
 
-## Latest release and remaining coverage
+## Required release verification
+
+Always perform these checks before reporting a release complete:
+
+1. Deploy changed Convex functions/schema separately and retain the successful production completion output. The expected deployment is `spotted-gazelle-950`; a Vercel build or a Git push does not deploy it.
+2. Run `pnpm verify:production:convex` after every release, even when no backend changes were expected. This read-only command obtains the live production API contract, checks the production URL and required pantry/import functions, and rejects the obsolete pantry API. It does not prove implementation identity or replace hosted behavior checks; update the required contract as features evolve.
+3. Wait for GitHub CI to finish on the **exact pushed commit** and inspect failing steps. CI checks backend/domain tests, root and Expo types, shared native UI tests, Python media tests and the full web/server build. It currently does not deploy Convex.
+4. Inspect the Vercel deployment for that commit and confirm the public production alias points to a Ready deployment. Check the media project too when it changes.
+5. Exercise the affected feature while signed in on the hosted app, and confirm the web bundle targets production Convex. Report any unverified behavior explicitly.
+
+## Current consolidation release
+
+Expo is now the sole product UI. The original pantry work is preserved in Git history and ported to the shared UI. Production Convex independently returned the new pantry API and `imports.setDismissed` on 12 September 2026. The latest initial CI run (`ed9a627`) failed because clean installs could not resolve the undeclared `vite/client` test types, despite Vercel and the earlier manual Convex deployment succeeding. The correction declares Vite directly and adds shared Expo checks to CI; release completion requires a successful replacement run.
+
+## Earlier release evidence
 
 The pantry, inline sources, compact headers, layout fixes and guardrail correction are deployed. Main commit `4caa144` passed CI and produced the ready web deployment `purrfect-plate-j0lvv4fsg-glen-paduas-projects.vercel.app`, aliased to the hosted app. The pantry uses presence rather than quantities; photo/voice capture is proposed future work. See [pantry](pantry.md).
 
@@ -51,6 +65,6 @@ The feature code and tests are organized around authenticated data operations, e
 - Broaden unavailable-source and platform coverage; current YouTube and embed success is sample-specific.
 - Configure a reachable development import worker. Development Convex currently points at the production worker, which cannot resolve development job IDs; development CRUD is usable, development imports are not accepted.
 - Address the launch constraints recorded in architecture.md: library pagination, orphaned-image cleanup, dependency advisories, production Clerk setup and wider operational monitoring.
-- Keep native Expo implementation and photo/voice pantry updates as documented future work until separately built and tested.
+- Complete physical-device Expo acceptance; photo/voice pantry updates remain future work.
 
 The completion bar remains end-to-end behavior: correct source evidence, reviewable gaps, authenticated persistence and a successful fresh reload. A ready deployment, an HTTP 200, a passing unit test, or a local download alone does not establish that a hosted recipe import works.
