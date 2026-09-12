@@ -9,8 +9,9 @@ See `lib/recipe-import/service.ts`, `extraction/http.ts`, `extraction/parse.ts`,
 The first version should cheaply reject clearly wrong targets, preserve incomplete
 recipes honestly, and stop expensive processing when nothing useful remains. It
 cannot guarantee that an AI classification or transcription is correct. Treat
-“probably cooking,” “contains usable instructions,” and “complete recipe” as
-different judgments.
+“probably cooking,” “standalone technique,” “partial dish recipe,” and “complete
+recipe” as different judgments. A wrapping tutorial is not a burrito recipe just
+because a tortilla and generic fillings appear in it.
 
 ## What the current pipeline already does
 
@@ -23,11 +24,12 @@ different judgments.
   public text. Complete structured recipes use a deterministic normalization path.
 - Wrong social link shapes and unsupported files reject before creating a job or consuming import quota. Resolved targets are checked again; a social login redirect retains the original post for the media fallback.
 - Available metadata and native captions are read before expensive media work. Complete structured recipes and explicitly headed complete captions bypass the relevance model; complete captions also skip media analysis.
-- Remaining text is screened with GPT-4.1-mini: at most 8,000 input characters, 350 output tokens and a 12-second timeout. A rejection requires an exact substantive source quote. Truncated inputs, missing metadata and classifier failures remain unknown. Rejected decisions retain reason, quote and usage for audit.
-- Metadata classification is probabilistic and does not prove what an unseen video contains. The UI says the link appears unrelated and lets the signed-in user explicitly extract anyway. This overrides only relevance, never URL safety, quota, duration or source-fact requirements.
+- Remaining text is screened with GPT-4.1-mini: at most 8,000 input characters, 350 output tokens and a 12-second timeout. Inputs shorter than 12 characters remain unknown. `technique` means an explicitly standalone skill, such as wrapping any burrito, sharpening a knife or a chopping tutorial; it rejects with `not_recipe`. An exact supporting quote is required (12 characters for technique, 20 for unrelated content). Truncated inputs, missing metadata, unsupported quotes and classifier failures remain unknown. Rejected decisions retain reason, quote and usage for audit.
+- Metadata classification is probabilistic and does not prove what an unseen video contains. The UI says the source does not look like a recipe, gives a specific technique/unrelated explanation, and lets the signed-in user explicitly extract anyway. This overrides both early and final relevance classification only, never URL safety, quota, duration, source-fact requirements or the empty-evidence stop.
 - Unknown specific posts receive bounded media inspection. A 260-second processing budget reserves normalization time; source-fetch deadlines cover DNS and redirects together. Image/frame analysis stops when its budget runs out and reports incomplete photo coverage. The outer route still has a 300-second ceiling.
+- The existing normalization model also returns `contentType` and a `classificationQuote`, adding no extra provider call. A source-backed final `technique` or `unrelated` decision rejects even if generic ingredients/steps could be extracted; its bounded audit retains media and normalization usage. Unsupported negative quotes become unknown. An explicit relevance override permits source-backed output with a warning. Real recipes containing wrapping/chopping and partial recipes without exact amounts remain eligible.
 - General visual observations never become recipe facts. Empty eligible evidence stops before normalization; covers are fetched only after a nonempty draft. Partial facts retain missing-information warnings. Retrieval/provider failures remain distinct where the adapter reports them.
-- Failure UI distinguishes unrelated, unavailable and insufficient sources. Incomplete drafts/failures offer an opt-in external recipe search with an editable query. The user chooses a source and pastes its link back; the app does not automatically fetch or invent alternative recipe cards.
+- Failure UI distinguishes non-recipe (including standalone techniques), unavailable and insufficient sources. Incomplete drafts/failures offer an opt-in external recipe search with an editable query. The user chooses a source and pastes its link back; the app does not automatically fetch or invent alternative recipe cards.
 
 ## Priority 1: deterministic target checks before paid processing
 
@@ -84,8 +86,9 @@ calibrated probability.
    page. A low-cost classifier still costs money and can make mistakes.
 3. **Unknown specific social post:** read available caption/transcript, then use
    the existing bounded multimodal fallback if evidence remains weak. A title,
-   hashtags, thumbnail, or song lyrics alone cannot justify rejecting the unseen
-   video. Missing narration is common in useful cooking demonstrations.
+   hashtags, thumbnail, or song lyrics alone usually cannot establish the unseen
+   video's contents. An explicit standalone-technique title can support a tentative
+   technique rejection; an ordinary dish title cannot. The user can override it. Missing narration is common in useful cooking demonstrations.
 4. **Nothing usable after the bounded attempt:** stop before recipe normalization
    when there is no eligible textual evidence. If the only result is an uncertain
    visual impression, show an incomplete/unavailable outcome rather than creating
@@ -119,7 +122,7 @@ needed rather than overloading every queue status with content judgments.
 | Content outcome | Meaning | User-facing recovery |
 | --- | --- | --- |
 | `wrong_target` | A profile, collection, search page, or malformed supported link | “Paste a link to the individual recipe, post, or video.” |
-| `not_recipe` | Readable source positively appears unrelated to preparing food | “This source doesn't appear to contain a recipe.” Offer another link and an optional user-requested retry where classification was uncertain. |
+| `not_recipe` | Readable source positively indicates unrelated content or a standalone technique rather than a dish recipe | “This source doesn't appear to contain a recipe.” Offer another link and an optional user-requested retry where classification was uncertain. |
 | `source_unavailable` | Access, private/deleted content, region block, or retrieval failure | “We couldn't read this source.” Retry or use the creator's public recipe page; never say there is no recipe. |
 | `insufficient_evidence` | Cooking may be shown, but no usable source-backed ingredient/step text was recovered | Explain the missing detail and offer a better source or manual entry. |
 | `partial_recipe` | Some verified recipe content with omissions/conflicts | Review supported lines with specific warnings; fill missing details manually. |
@@ -161,6 +164,8 @@ is verifiable.
 | Generic homepage containing a complete recipe | Positive evidence wins over a pathname heuristic. |
 | Multi-recipe roundup | Ask for a specific recipe or retain the current explicit first-recipe warning; never combine recipes. |
 | Clearly unrelated readable article | Stop after cheap evidence assessment; no frames/ASR/recipe-generation call. |
+| Explicit wrapping/sharpening/chopping tutorial | Stop at preflight when explicit source text supports technique; otherwise classify during normalization and retain failure usage. |
+| Real burrito recipe containing wrapping steps; unmeasured partial CrunchWrap | Preserve actual dish ingredients/preparation and missing-detail warnings; do not reject merely for technique words or missing quantities. |
 | Terse or non-English recipe caption | `unknown`/positive; no English-keyword rejection. |
 | Music-only cooking video with legible ingredient overlays | Use OCR/video fallback; retain supported text and omissions. |
 | Music-only video showing food but no recoverable text | `insufficient_evidence`; no invented quantities or cooking times. |
@@ -184,3 +189,7 @@ already necessary, request classification/coverage alongside its evidence output
 Unit/integration tests verify wrong-target rejection before a job exists, quoted relevance decisions, truncated-input fallback, user-authorized relevance override, retry fencing/cooldown, source-reference preservation and typed recovery hints. Live bounded text probes classified an unrelated laptop review as unrelated, explicit egg instructions as recipe, and a sparse biryani cooking caption as unknown. The deployed media worker returned CrunchWrap narration in 16.4 seconds with Gemini 3.6 Flash. Full hosted import acceptance is recorded separately in `production-plan.md`.
 
 Known next improvements: reuse metadata across the preflight and analysis service calls; record structured source-coverage flags across every provider; add broader multilingual/negative fixtures; recognize short-link duplicates after redirect resolution; and offer verified in-app search results if requested. Raw-media extraction can still be blocked by platform changes. Browser tests do not establish iPhone or App Store acceptance.
+
+### Recipe-versus-technique correction
+
+The supplied wrapping tutorial was initially accepted and saved during testing; that was a scope error, not a successful recipe import. The correction adds both gates described above. A live provider probe classified **How to wrap a perfect burrito** as technique (337 input / 21 output tokens), classified its retained hosted transcript as technique with an exact opening-sentence quote (1,073 / 561 tokens), and retained partial real CrunchWrap speech as a recipe with three ingredients, four steps and missing-amount/assembly warnings (885 / 380 tokens). These are direct provider checks; fresh hosted acceptance of the correction is a separate release check. Regression tests exercise the `importRecipe` interface with the actual tutorial transcript, partial dish preparation, a burrito recipe containing wrapping, explicit override and bounded failure audit.

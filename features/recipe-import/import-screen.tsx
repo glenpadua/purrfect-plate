@@ -65,6 +65,7 @@ function ReviewDraft({ job }: { job: Import }) {
   const draft = job.draft!
   const router = useRouter()
   const save = useMutation(api.imports.save)
+  const recheck = useMutation(api.imports.recheckDraft)
   const [name, setName] = useState(draft.name)
   const [ingredients, setIngredients] = useState(recipeLinesToText(draft.ingredients))
   const [instructions, setInstructions] = useState(recipeLinesToText(draft.instructions))
@@ -91,6 +92,7 @@ function ReviewDraft({ job }: { job: Import }) {
       <label className="grid gap-2 text-sm font-medium">Tags<Input value={tags} onChange={e => setTags(e.target.value)} placeholder="Separate tags with commas" /></label>
       <Button type="submit" disabled={saving} className="w-full">{saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}Save to our library</Button>
       <p className="text-xs text-muted-foreground">Check amounts and cooking times against the <a className="underline" href={job.url} target="_blank" rel="noreferrer">original recipe</a>. Missing details are left for you to review.</p>
+      <details className="border-t pt-4 text-sm"><summary className="cursor-pointer text-muted-foreground">Need to read the source again?</summary><p className="my-3 text-xs leading-5 text-muted-foreground">Re-extraction replaces this unsaved draft and any edits in this form. It runs the current checks again and counts as another import.</p><Button type="button" variant="outline" disabled={saving} onClick={async () => { setSaving(true); try { await recheck({ id: job.id, expectedUpdatedAt: job.updatedAt }) } catch (error) { toast.error(importError(error, "Could not re-extract this source.")); setSaving(false) } }}>Re-extract source</Button></details>
     </div>
   </form>
 }
@@ -102,5 +104,5 @@ function AlternativeRecipeSearch({ initialQuery = "" }: { initialQuery?: string 
 
 function FailedImport({ job, retry }: { job: Import; retry: (args: { id: Id<"imports">; continueAnyway?: boolean }) => Promise<unknown> }) {
   const [busy, setBusy] = useState(false)
-  return <div className="space-y-4 rounded-2xl border bg-card p-6"><h2 className="text-2xl">{job.failureCode === "not_recipe" ? "This looks unrelated to cooking" : job.failureCode === "insufficient" ? "Not enough recipe details" : "We couldn’t finish this import"}</h2><p className="text-sm leading-6 text-muted-foreground">{job.error}</p><div className="flex gap-3"><Button disabled={busy} onClick={async () => { setBusy(true); try { await retry({ id: job.id, ...(job.failureCode === "not_recipe" ? { continueAnyway: true } : {}) }) } catch (e) { toast.error(importError(e, "Could not retry. Please try again.")) } finally { setBusy(false) } }}>{busy ? "Checking…" : job.failureCode === "not_recipe" ? "It’s a recipe — extract anyway" : "Check again"}</Button><Button asChild variant="outline"><a href={job.url} target="_blank" rel="noopener noreferrer">Open source<ArrowUpRight className="size-4" /></a></Button></div>{job.failureCode === "insufficient" ? <AlternativeRecipeSearch initialQuery={job.searchQuery} /> : null}</div>
+  return <div className="space-y-4 rounded-2xl border bg-card p-6"><h2 className="text-2xl">{job.failureCode === "not_recipe" ? "This doesn’t look like a recipe" : job.failureCode === "insufficient" ? "Not enough recipe details" : "We couldn’t finish this import"}</h2><p className="text-sm leading-6 text-muted-foreground">{job.error}</p><div className="flex gap-3"><Button disabled={busy} onClick={async () => { setBusy(true); try { await retry({ id: job.id, ...(job.failureCode === "not_recipe" ? { continueAnyway: true } : {}) }) } catch (e) { toast.error(importError(e, "Could not retry. Please try again.")) } finally { setBusy(false) } }}>{busy ? "Checking…" : job.failureCode === "not_recipe" ? "It’s a recipe — extract anyway" : "Check again"}</Button><Button asChild variant="outline"><a href={job.url} target="_blank" rel="noopener noreferrer">Open source<ArrowUpRight className="size-4" /></a></Button></div>{job.failureCode === "insufficient" ? <AlternativeRecipeSearch initialQuery={job.searchQuery} /> : null}</div>
 }

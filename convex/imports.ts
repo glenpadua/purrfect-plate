@@ -59,6 +59,21 @@ export const retry = mutation({
     return null
   },
 })
+export const recheckDraft = mutation({
+  args: { id: v.id("imports"), expectedUpdatedAt: v.number() }, returns: v.null(),
+  handler: async (ctx, { id, expectedUpdatedAt }) => {
+    const member = await requireMembership(ctx)
+    const job = await ctx.db.get(id)
+    if (!job || job.libraryId !== member.libraryId) throw new ConvexError("Import not found.")
+    if (job.status !== "needs_review" || job.recipeId) throw new ConvexError("Only an unsaved draft can be re-extracted.")
+    if (job.updatedAt !== expectedUpdatedAt) throw new ConvexError("This draft changed. Reload it before re-extracting.")
+    await quota(ctx, member.libraryId)
+    const attempt = job.attempt + 1
+    await ctx.db.patch(id, { status: "queued", phase: "Rechecking the source", attempt, relevanceOverride: undefined, updatedAt: Date.now() })
+    await ctx.scheduler.runAfter(0, internal.importWorker.dispatch, { id, attempt })
+    return null
+  },
+})
 export const list = query({
   args: {}, returns: v.array(summary),
   handler: async ctx => {
@@ -130,6 +145,7 @@ export const workerFinish = mutation({
     if (args.imageStorageId) { const file = await ctx.db.system.get(args.imageStorageId); if (!file || file.size > 350_000 || file.contentType !== "image/webp") throw new ConvexError("Image exceeded storage policy.") }
     if ((args.evidenceJson?.length ?? 0) > 500_000) throw new ConvexError("Evidence exceeded storage limit.")
     if (args.draft) cleanContent(args.draft)
+    if (job.imageStorageId && job.imageStorageId !== args.imageStorageId && !job.recipeId) await ctx.storage.delete(job.imageStorageId)
     await ctx.db.patch(job._id, { status: args.error || !args.draft ? "failed" : "needs_review", phase: args.error ? "Could not finish this import" : "Ready for your review", draft: args.draft, evidenceJson: args.evidenceJson, imageStorageId: args.imageStorageId, author: args.author?.slice(0, 200), error: args.error?.slice(0, 500), failureCode: args.failureCode, searchQuery: args.searchQuery?.slice(0, 100), updatedAt: Date.now(), leaseExpiresAt: undefined })
     return true
   },

@@ -35,7 +35,7 @@ Insufficient-evidence failures now retain bounded evidence, provider usage, warn
 
 Publisher ingredient groups and notes are implemented. A parser replay of the actual Greek chicken page returned 15 ingredients, nine publisher steps, three ingredient groups and 14 note paragraphs. The older unsaved hosted draft remains stale and is not automatically rewritten. A fresh hosted website import/review/save check is still required.
 
-The feature code and tests are organized around authenticated data operations, extraction and cooking interfaces. The final test/build run for this release must be recorded after completion; earlier counts are not a substitute for that result.
+The feature code and tests are organized around authenticated data operations, extraction and cooking interfaces. The latest stable verification passed 94 TypeScript tests across 19 files, nine Python tests, TypeScript checking and a local Webpack production build. Hosted acceptance of the pending web changes remains separate.
 
 ## Remaining acceptance and launch work
 

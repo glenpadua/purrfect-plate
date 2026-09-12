@@ -20,12 +20,13 @@ export function checkImportTarget(value: string) {
   if (/\.(?:pdf|zip|exe|dmg|mp[34]|mov|jpg|png|webp)$/i.test(url.pathname)) throw new ImportSourceError("Share the recipe page or original social post instead of a direct file link.", "wrong_link")
 }
 
-const decisionSchema = z.object({ classification: z.enum(["recipe", "cooking", "unrelated", "unknown"]), quote: z.string().max(500), dish: z.string().max(80).nullable() })
+const decisionSchema = z.object({ classification: z.enum(["recipe", "cooking", "technique", "unrelated", "unknown"]), quote: z.string().max(500), dish: z.string().max(80).nullable() })
 const normalized = (text: string) => text.replace(/\s+/g, " ").trim().toLowerCase()
 export function readPreflightDecision(raw: unknown, source: string) {
   const decision = decisionSchema.parse(raw)
-  // A title, missing keyword, or invented explanation cannot justify rejection.
-  if (decision.classification === "unrelated" && (source.length > 8000 || decision.quote.trim().length < 20 || !normalized(source).includes(normalized(decision.quote)))) decision.classification = "unknown"
+  // A short explicit tutorial title can establish a technique. Missing recipe
+  // words cannot: both negative classes still need an actual supporting quote.
+  if ((decision.classification === "unrelated" || decision.classification === "technique") && (source.length > 8000 || decision.quote.trim().length < (decision.classification === "technique" ? 12 : 20) || !normalized(source).includes(normalized(decision.quote)))) decision.classification = "unknown"
   if (decision.dish && !normalized(source).includes(normalized(decision.dish))) decision.dish = null
   return decision
 }

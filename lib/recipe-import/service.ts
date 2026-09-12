@@ -67,6 +67,7 @@ export async function importRecipe(url: string, progress: (phase: string) => Pro
   const hasStructuredRecipe = evidence.some(item => item.kind === "structured_recipe")
   const preflight = options.relevanceOverride ? { classification: "unknown" as const, dish: null, usage: undefined, overridden: true } : hasStructuredRecipe || completeCaption ? { classification: "recipe" as const, dish: null, usage: undefined } : await preflightRecipe([sourceTitle, ...evidence.filter(item => item.kind !== "visual_observation").map(item => item.text)].join("\n"))
   if (preflight.classification === "unrelated") throw new ImportSourceError("This link appears to be about something other than a recipe or cooking. No full extraction was run. Try a specific recipe page or cooking video.", "not_recipe", undefined, { url, checkedAt: new Date().toISOString(), preflight })
+  if (preflight.classification === "technique") throw new ImportSourceError("This is a cooking technique rather than a recipe. It does not provide a dish recipe to save. Try the creator’s recipe page instead.", "not_recipe", undefined, { url, finalUrl, platform, sourceTitle, checkedAt: new Date().toISOString(), preflight })
 
 
   if (platform !== "website" && !completeCaption) {
@@ -139,6 +140,10 @@ export async function importRecipe(url: string, progress: (phase: string) => Pro
   if (!evidence.some(item => item.kind !== "visual_observation" && item.text.trim())) throw new ImportSourceError("We could not recover readable ingredients or instructions. The source may be inaccessible, or it may contain only visuals. You can open it, add the recipe manually, or look for a different recipe.", mediaUnavailable ? "unavailable" : "insufficient", searchQuery, failureAudit())
   await progress("Putting the recipe into clear ingredients and steps")
   const result = await normalizeRecipe(evidence, budget(90000, 15000))
+  if (result.contentType === "technique" || result.contentType === "unrelated") {
+    if (!options.relevanceOverride) throw new ImportSourceError(result.contentType === "technique" ? "This is a cooking technique rather than a recipe. It does not provide a dish recipe to save. Try the creator’s recipe page instead." : "This source does not appear to provide a recipe. Try a specific recipe page or cooking video.", "not_recipe", searchQuery, failureAudit(result))
+    result.draft.warnings.push(result.contentType === "technique" ? "This source appears to teach a technique rather than provide a dish recipe; you chose to extract it anyway." : "This source may not be a recipe; you chose to extract it anyway.")
+  }
   if (!result.draft.ingredients.length && !result.draft.instructions.length) throw new ImportSourceError("We read this source, but it did not provide usable ingredients or cooking instructions. Try the creator’s recipe page, add details manually, or find a different recipe.", mediaUnavailable ? "unavailable" : "insufficient", searchQuery, failureAudit(result))
   if (sourceImageUrl && budget(15000) >= 15000) {
     try { image = await retrieveRecipeImage(sourceImageUrl, AbortSignal.timeout(budget(15000))) } catch { warnings.push("The source cover was unavailable; a video frame or placeholder is used.") }

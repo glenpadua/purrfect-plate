@@ -20,6 +20,7 @@ export function PantryScreen() {
   const [copyStatus, setCopyStatus] = useState("")
   const [showCopy, setShowCopy] = useState(false)
   const copyArea = useRef<HTMLTextAreaElement>(null)
+  const copyRequest = useRef(0)
   const shoppingText = state?.shopping.map(item => `☐ ${item.name}`).join("\n") ?? ""
   async function run(action: () => Promise<unknown>) {
     if (pending) return
@@ -30,17 +31,27 @@ export function PantryScreen() {
     finally { setPending(false) }
   }
   async function copyList() {
+    const request = ++copyRequest.current
     setShowCopy(true)
+    setCopyStatus("Select and copy your list below.")
+    let timeout: ReturnType<typeof setTimeout> | undefined
+    let copied = false
     try {
-      await navigator.clipboard.writeText(shoppingText)
-      setCopyStatus("Shopping list copied.")
+      copied = await Promise.race([
+        navigator.clipboard.writeText(shoppingText).then(() => true),
+        new Promise<boolean>(resolve => { timeout = setTimeout(() => resolve(false), 1000) }),
+      ])
     } catch {
-      setCopyStatus("Select and copy your list below.")
-      requestAnimationFrame(() => { copyArea.current?.focus(); copyArea.current?.select() })
+      // The visible list remains usable when clipboard access is unavailable.
+    } finally {
+      if (timeout !== undefined) clearTimeout(timeout)
     }
+    if (request !== copyRequest.current) return
+    if (copied) setCopyStatus("Shopping list copied.")
+    else requestAnimationFrame(() => { copyArea.current?.focus(); copyArea.current?.select() })
   }
   return <main className="mx-auto min-h-screen max-w-3xl space-y-6 px-4 pb-16 pt-6 sm:px-6 sm:pt-10">
-    <Link href="/" className="inline-flex min-h-10 items-center gap-2 text-sm text-muted-foreground"><ArrowLeft className="size-4" />Recipe library</Link>
+    <Link href="/" className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground"><ArrowLeft className="size-4" />Recipe library</Link>
     <header className="space-y-3">
       <div className="flex items-center gap-3"><Cat className="size-8 text-primary" /><h1 className="text-4xl sm:text-5xl">Our pantry</h1></div>
       <p className="max-w-xl text-sm leading-6 text-muted-foreground">A quick check of what’s at home, shared by both of you. Mark things out as you use them, or confirm you still have them. No weighing or counting.</p>
@@ -59,19 +70,19 @@ export function PantryScreen() {
               {item.present ? <Check className="mt-1 size-5 shrink-0 text-primary" aria-label="Have at home" /> : null}
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" className="min-h-10" disabled={pending} onClick={() => void run(() => setPresence({ name: item.name, present: true }))}>{item.present ? "Still have it" : "Have it"}</Button>
-              {item.present ? <Button variant="ghost" className="min-h-10" disabled={pending} onClick={() => void run(() => setPresence({ name: item.name, present: false }))}>Mark out</Button> : null}
-              <Button variant="ghost" className="min-h-10" disabled={pending || state.shopping.some(entry => entry.key === item.key)} onClick={() => void run(() => addToShopping({ name: item.name }))}>{state.shopping.some(entry => entry.key === item.key) ? "On shopping list" : "Need it"}</Button>
-              <Button variant="ghost" className="min-h-10 text-muted-foreground" disabled={pending} onClick={() => void run(() => forget({ id: item.id }))}>Stop tracking</Button>
+              <Button variant="outline" className="min-h-11" disabled={pending} onClick={() => void run(() => setPresence({ name: item.name, present: true }))}>{item.present ? "Still have it" : "Have it"}</Button>
+              {item.present ? <Button variant="ghost" className="min-h-11" disabled={pending} onClick={() => void run(() => setPresence({ name: item.name, present: false }))}>Mark out</Button> : null}
+              <Button variant="ghost" className="min-h-11" disabled={pending || state.shopping.some(entry => entry.key === item.key)} onClick={() => void run(() => addToShopping({ name: item.name }))}>{state.shopping.some(entry => entry.key === item.key) ? "On shopping list" : "Need it"}</Button>
+              <Button variant="ghost" className="min-h-11 text-muted-foreground" disabled={pending} onClick={() => void run(() => forget({ id: item.id }))}>Stop tracking</Button>
             </div>
           </li>)}
         </ul>}
       </section>
       <section className="rounded-lg border bg-card p-5" aria-labelledby="shopping-items">
-        <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="shopping-items" className="flex items-center gap-2 text-2xl"><ShoppingBasket className="size-5 text-primary" />Shopping list</h2><Button variant="outline" className="min-h-10" disabled={!state.shopping.length} onClick={() => void copyList()}>Copy list</Button></div>
+        <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="shopping-items" className="flex items-center gap-2 text-2xl"><ShoppingBasket className="size-5 text-primary" />Shopping list</h2><Button variant="outline" className="min-h-11" disabled={!state.shopping.length} onClick={() => void copyList()}>Copy list</Button></div>
         <p className="mt-2 text-xs leading-5 text-muted-foreground">Mark bought to move an ingredient back to the pantry. Removing it from this list keeps it marked out.</p>
         {!state.shopping.length ? <p className="mt-4 text-sm text-muted-foreground">Nothing on the list. Add an ingredient above or tap Need it in a recipe.</p> : <ul className="mt-3 divide-y">
-          {state.shopping.map(item => <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><span className="min-w-0 break-words font-medium">{item.name}</span><div className="flex gap-2"><Button variant="outline" className="min-h-10" disabled={pending} onClick={() => void run(() => purchase({ id: item.id }))}>Bought</Button><Button variant="ghost" className="min-h-10" disabled={pending} onClick={() => void run(() => removeShopping({ id: item.id }))}>Remove</Button></div></li>)}
+          {state.shopping.map(item => <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><span className="min-w-0 break-words font-medium">{item.name}</span><div className="flex gap-2"><Button variant="outline" className="min-h-11" disabled={pending} onClick={() => void run(() => purchase({ id: item.id }))}>Bought</Button><Button variant="ghost" className="min-h-11" disabled={pending} onClick={() => void run(() => removeShopping({ id: item.id }))}>Remove</Button></div></li>)}
         </ul>}
         {showCopy ? <div className="mt-4 space-y-2"><label htmlFor="shopping-copy" className="text-sm font-medium">Your list to copy</label><textarea ref={copyArea} id="shopping-copy" value={shoppingText} readOnly rows={Math.min(Math.max(state.shopping.length, 3), 10)} className="w-full rounded-md border bg-background p-3 text-base" onFocus={event => event.target.select()} /><p role="status" className="text-xs text-muted-foreground">{copyStatus}</p></div> : null}
       </section>

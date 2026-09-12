@@ -96,3 +96,21 @@ test("members can override only a relevance decision, with the same durable job"
   await t.mutation(api.imports.workerFinish, { secret: "test-worker", id, attempt: 2, error: "Unavailable.", failureCode: "unavailable" })
   await expect(user.mutation(api.imports.retry, { id, continueAnyway: true })).rejects.toThrow("Only a relevance")
 })
+test("members can explicitly recheck an unsaved draft without duplicating it or replacing a saved recipe", async () => {
+  const { t, user } = await setup()
+  const id = await user.mutation(api.imports.start, { url: "https://example.com/recipe-to-recheck" })
+  await t.mutation(internal.imports.claim, { id, attempt: 1 })
+  await t.mutation(api.imports.workerFinish, { secret: "test-worker", id, attempt: 1, draft })
+  const previous = (await user.query(api.imports.get, { id }))!
+  await expect(t.mutation(api.imports.recheckDraft, { id, expectedUpdatedAt: previous.updatedAt })).rejects.toThrow("Sign in")
+  await expect(user.mutation(api.imports.recheckDraft, { id, expectedUpdatedAt: previous.updatedAt - 1 })).rejects.toThrow("changed")
+  await user.mutation(api.imports.recheckDraft, { id, expectedUpdatedAt: previous.updatedAt })
+  expect(await user.query(api.imports.get, { id })).toMatchObject({ status: "queued", attempt: 2 })
+  expect(await user.mutation(api.imports.start, { url: "https://example.com/recipe-to-recheck" })).toBe(id)
+  await t.mutation(internal.imports.claim, { id, attempt: 2 })
+  await t.mutation(api.imports.workerFinish, { secret: "test-worker", id, attempt: 2, draft })
+  const recipeId = await user.mutation(api.imports.save, { id, draft })
+  const saved = (await user.query(api.imports.get, { id }))!
+  await expect(user.mutation(api.imports.recheckDraft, { id, expectedUpdatedAt: saved.updatedAt })).rejects.toThrow("unsaved")
+  expect(await user.query(api.recipes.get, { id: recipeId })).toMatchObject({ name: "Eggs" })
+})

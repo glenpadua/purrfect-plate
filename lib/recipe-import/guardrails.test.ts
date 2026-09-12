@@ -12,3 +12,11 @@ test("only accepts an unrelated classification backed by actual supplied text", 
   expect(readPreflightDecision({ classification: "unknown", quote: "", dish: "Biryani" }, "Biryani").classification).toBe("unknown")
   expect(readPreflightDecision({ classification: "unrelated", quote: text, dish: null }, text + "x".repeat(8000)).classification).toBe("unknown")
 })
+
+test("a technique rejection needs a real supporting quote and complete preflight context", () => {
+  const title = "How to wrap a perfect burrito"
+  expect(readPreflightDecision({ classification: "technique", quote: title, dish: null }, title).classification).toBe("technique")
+  expect(readPreflightDecision({ classification: "technique", quote: title, dish: null }, "A full chicken burrito recipe").classification).toBe("unknown")
+  expect(readPreflightDecision({ classification: "technique", quote: "burrito", dish: null }, title).classification).toBe("unknown")
+  expect(readPreflightDecision({ classification: "technique", quote: title, dish: null }, title + "x".repeat(8000)).classification).toBe("unknown")
+})
