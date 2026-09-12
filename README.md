@@ -4,7 +4,8 @@ A shared cat-themed recipe library for Glen and Millusha. Import public links, r
 
 ## Stack
 
-- Next.js 16 / React 19 on Vercel; Tailwind, shadcn and Framer Motion.
+- Expo 57 / React Native 0.86: one UI for web, iOS and Android in `apps/mobile`.
+- Vercel serves the Expo web export. Next.js 16 runs server APIs only; there are no Next.js product screens.
 - Convex for authenticated shared-library data, storage and durable import jobs.
 - Clerk for Google and email-code sign-in. Verified invitations grant membership; both users share one library.
 - A private Python/FastAPI media service using yt-dlp, Instaloader, youtube-transcript-api and FFmpeg.
@@ -19,12 +20,17 @@ Use Node 24 and pnpm 10. Configure credentials privately using .env.local.exampl
 ```bash
 pnpm install --frozen-lockfile
 pnpm exec convex dev
-pnpm dev --port 3101
+pnpm dev
+# Shared browser preview: http://127.0.0.1:8082
 pnpm test:run
+pnpm test:mobile
+pnpm typecheck
 pnpm build
 ```
 
-Stop the dev server before changing dependencies. pnpm uses an isolated workspace layout to keep native and web React runtimes separate; installing packages can move modules while Webpack still references old paths. Restart after installation. If an interrupted upgrade leaves stale paths, stop the server, move .next aside, rebuild, then restart.
+`pnpm dev` and `pnpm product:web` start the same Expo/Metro application. Use `pnpm mobile:ios` for the iOS simulator. Changes to shared screens appear in both connected development clients. The production website and installed phone releases need their respective release steps; they do not update merely because a local file changed.
+
+For server API development only, run `pnpm server:dev --port 3101`. The local extraction CLI still targets that API server; it has no separate frontend. Stop and restart development servers when workspace dependency links change.
 
 ## Hosted pilot
 
@@ -46,21 +52,32 @@ New images are metadata-free WebP, at most 1440 pixels on either side and 350,00
 
 Paste a public HTTPS recipe link, wait for a durable draft, review its ingredients/steps/warnings and save. Repeated canonical links reuse a job; repeated saves return one recipe. Wrong targets and clear standalone technique tutorials reject early; final source classification catches tutorials missed by metadata. Partial real recipes remain reviewable. Missing facts are flagged rather than invented. Tags stay at three or fewer, with dish tags grouping variants. Original evidence stays separate from editable content. Visual guesses never become recipe facts. Unsaved drafts can explicitly re-extract the source under a last-update check.
 
-The local extraction bench remains at /extraction-prototype; its API is disabled on Vercel. Detailed earlier experiments are in docs/extraction-prototype.md.
+The local extraction CLI and `/api/extraction-prototype` remain available for debugging; that API is disabled on Vercel. The retired `/extraction-prototype` frontend has been removed. Earlier experiments are documented in docs/extraction-prototype.md.
 
 ## Start here for contributors and agents
 
+- [How the app works](docs/how-the-app-works.md): a plain-language guide with diagrams and release examples.
 - [Architecture and operations](docs/architecture.md): module ownership, authentication, jobs, image lifecycle and known limits.
 - [Import guardrails](docs/import-guardrails.md): cheap relevance checks, limits and honest alternatives.
 - [Cooking behavior](docs/cooking.md): supported amounts, unit conventions and test seams.
-- [Pantry and shopping](docs/pantry.md): binary presence, conservative ingredient matching and future reviewed photo/voice updates.
+- [Pantry and shopping](docs/pantry.md): presence, aliases, recipe checkboxes and independent temporary shopping lists.
 - [Inline sources](docs/source-embeds.md): supported players, mobile layout and platform limitations.
 - [Production acceptance](docs/production-plan.md): verified behavior versus remaining checks.
 - [YouTube investigation](docs/youtube-retrieval.md): evidence and the current fallback experiment.
 - [Mobile plan](docs/mobile-plan.md): Expo, Clerk/Convex reuse, Mac setup and installation on both iPhones.
 
-Run `pnpm test:run` and `pnpm exec tsc --noEmit` before deployment. Use the production build for route and bundling checks; tests do not substitute for hosted sign-in, source extraction or real-device acceptance. Deploy additive Convex changes before the web build. Keep credentials and generated evidence out of Git.
+Run `pnpm test:run`, `pnpm test:mobile` and `pnpm typecheck` before deployment. Use the production build for route and bundling checks; tests do not substitute for hosted sign-in, source extraction or real-device acceptance. Deploy additive Convex changes before the web build. Keep credentials and generated evidence out of Git.
 
-## Universal product UI
+## Where to make changes
 
-The Expo app under `apps/mobile` renders the same product screens on iOS and in browsers through React Native Web, using the same Clerk identity and Convex functions. Run `pnpm product:web` for the local browser preview on port 8082; an already booted iOS simulator can open that same Metro server with `xcrun simctl openurl booted exp://127.0.0.1:8082`. Authentication, photo selection and source embeds use small platform adapters. Extraction and AI stay server-side, and the hosted Next.js UI remains in place during local validation. See [the mobile plan](docs/mobile-plan.md) for verification results and remaining parity work.
+| Change | Source |
+| --- | --- |
+| Screens, forms, buttons, responsive layout | `apps/mobile/src/features`, `apps/mobile/src/ui` |
+| Navigation and routes | `apps/mobile/src/app` |
+| Shared recipe, import and pantry rules | `convex` and pure helpers in `lib` |
+| Shared API/types, ingredient helpers and palette | `packages/recipe-core` |
+| Server extraction and media processing | `app/api`, `lib/recipe-import`, `services/media` |
+
+There is one product frontend. Do not add new product pages under root `app`, or recreate root `components`/`features`. Those duplicate implementations have been removed. The historical `apps/mobile` name includes the web application too. Small `.web.tsx` adapters handle browser-specific authentication, photo selection and provider embeds; they do not duplicate product screens.
+
+The pantry work from **Simplify pantry ingredient states** is preserved in Git commit `076f532` and ported into this shared UI, including its schema, dictionary, corrections, merge flow and tests. See [the pantry contract](docs/pantry.md).

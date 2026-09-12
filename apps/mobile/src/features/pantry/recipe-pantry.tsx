@@ -1,74 +1,99 @@
-import { useState } from "react";
-import { Text, View } from "react-native";
-import { ingredientAvailability, ingredientIdentity, type RecipeLine } from "@purrfect-plate/recipe-core";
-import { Body, Button, ErrorMessage, Field, styles, useTask } from "../../ui";
-import type { usePantry } from "./data";
+import { useRef, useState, type ComponentProps } from "react";
+import { View } from "react-native";
+import { router } from "expo-router";
+import { useMutation, useQuery } from "convex/react";
+import type { FunctionArgs, FunctionReturnType } from "convex/server";
+import { api, type Id } from "@purrfect-plate/recipe-core/api";
+import { Body, Button, ErrorMessage, Field, styles } from "../../ui";
+import { IngredientCheckbox } from "../../ui/ingredient-checkbox";
+import { CookingPanel } from "../cooking/cooking-panel";
+import { IngredientSuggestions, pantryError } from "./ingredient-entry";
+import { usePantryReady } from "./data";
 
-type Pantry = ReturnType<typeof usePantry>;
+type CookingProps = Omit<ComponentProps<typeof CookingPanel>, "ingredientControl" | "ingredientsIntro" | "ingredientsFooter">;
+type Match = FunctionReturnType<typeof api.pantry.matches>[number];
+type Presence = FunctionArgs<typeof api.pantry.setRecipePresence>;
 
-export function RecipeShopping({ ingredients, pantry }: { ingredients: RecipeLine[]; pantry: Pantry }) {
-  const task = useTask();
-  const [result, setResult] = useState("");
-  const candidates = new Map<string, string>();
-  let unclear = 0;
-  for (const line of ingredients.slice(0, 100)) {
-    const item = ingredientAvailability(line.text, pantry.state?.pantry ?? []);
-    if (!item.key || !item.name) unclear++;
-    else if (item.status !== "present" && !pantry.state?.shopping.some(entry => entry.key === item.key)) candidates.set(item.key, item.name);
-  }
-  if (!ingredients.length) return null;
-  return <View style={{ gap: 10 }}>
-    <Body muted>Pantry checks are shared and track what you have, not how much.</Body>
-    <Button secondary title={task.busy ? "Adding ingredients…" : "Add unchecked ingredients to shopping"}
-      disabled={task.busy || !pantry.state || !candidates.size}
-      onPress={() => void task.run(async () => {
-        setResult("");
-        let added = 0;
-        let failed = 0;
-        for (const name of candidates.values()) {
-          try { await pantry.addToShopping({ name }); added++; }
-          catch { failed++; }
-        }
-        setResult(`${added} ingredient${added === 1 ? "" : "s"} added.${failed ? ` ${failed} could not be added. Try again.` : ""}${unclear ? ` ${unclear} unclear lines skipped; track those individually below.` : ""}${ingredients.length > 100 ? " Only the first 100 lines were checked." : ""}`);
-      })} />
-    <Body muted>Skips ingredients you have, items already on your list, and unclear lines. Adds names only; check amounts yourself.</Body>
-    {!!result && <Text accessibilityLiveRegion="polite" style={styles.muted}>{result}</Text>}
-    <ErrorMessage message={task.error} />
-  </View>;
+export function PantryCookingPanel(props: CookingProps & { recipeId: Id<"recipes"> }) {
+  const { ready, error, retry } = usePantryReady();
+  const matches = useQuery(api.pantry.matches, ready ? { recipeId: props.recipeId } : "skip");
+  const setPresence = useMutation(api.pantry.setRecipePresence);
+  const addMissing = useMutation(api.pantry.addMissing);
+  return <PantryCookingView {...props} matches={matches} setPresence={setPresence} addMissing={addMissing} openingError={error} onRetry={retry} />;
 }
 
-export function IngredientPantry({ text, pantry }: { text: string; pantry: Pantry }) {
-  const task = useTask();
+export function PantryCookingView({ recipeId, matches, setPresence, addMissing, openingError, onRetry, ...props }: CookingProps & {
+  recipeId: Id<"recipes">; matches?: Match[]; setPresence: (args: Presence) => Promise<unknown>;
+  addMissing: (args: { recipeId: Id<"recipes"> }) => Promise<number>; openingError?: string; onRetry?: () => void;
+}) {
+  const busy = useRef(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState("");
+  const missing = matches?.filter(item => !item.present).length ?? 0;
+  async function change(args: Omit<Presence, "recipeId">) {
+    if (busy.current) throw new Error("An ingredient is still saving.");
+    busy.current = true; setPending(true); setResult("");
+    try { await setPresence({ ...args, recipeId }); }
+    finally { busy.current = false; setPending(false); }
+  }
+  async function add() {
+    if (busy.current || !matches) return;
+    busy.current = true; setPending(true); setError(""); setResult("");
+    try {
+      const count = await addMissing({ recipeId });
+      setResult(count ? `${count} ingredient${count === 1 ? "" : "s"} added to shopping.` : "Your list already includes everything missing.");
+    } catch (error) { setError(pantryError(error)); }
+    finally { busy.current = false; setPending(false); }
+  }
+  return <CookingPanel {...props}
+    ingredientsIntro={<View style={{ gap: 8 }}>
+      <Body muted>Check what you have at home. We’ll remember it in your pantry.</Body>
+      <ErrorMessage message={openingError} />
+      {!!openingError && onRetry && <Button title="Try again" onPress={onRetry} />}
+    </View>}
+    ingredientControl={(text, displayed, index) => <IngredientCheck text={text} label={displayed}
+      match={matches?.[index]?.text === text ? matches[index] : undefined} disabled={pending} onChange={change} />}
+    ingredientsFooter={!!props.recipe.ingredients?.length && <View style={{ gap: 10 }}>
+      <View style={styles.row}>
+        <Button title={pending ? "Saving…" : "Add missing ingredients"} disabled={pending || !matches || !missing} onPress={() => void add()} />
+        <Button secondary title="Open pantry" onPress={() => router.push("/pantry")} />
+      </View>
+      <Body muted>{matches && !missing ? "Everything is checked. Check the amounts you need before cooking." : "Adds names once. Unclear ingredients stay as written."}</Body>
+      {!!result && <Body muted>{result}</Body>}
+      <ErrorMessage message={error} />
+    </View>} />;
+}
+
+export function IngredientCheck({ text, label, match, disabled, onChange }: {
+  text: string; label: string; match?: Match; disabled?: boolean; onChange: (args: Omit<Presence, "recipeId">) => Promise<unknown>;
+}) {
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState("");
-  const [saved, setSaved] = useState("");
-  if (!pantry.state) return <Body muted>Checking pantry…</Body>;
-  const item = ingredientAvailability(text, pantry.state.pantry);
-  const queued = pantry.state.shopping.some(entry => entry.key === item.key);
-  async function save(present: boolean) {
-    const identity = ingredientIdentity(item.name ?? name);
-    if (!identity) throw new Error("Enter one ingredient name, such as onion or olive oil.");
-    await (present ? pantry.setPresence({ name: identity.name, present: true }) : pantry.addToShopping({ name: identity.name }));
-    setSaved(`${identity.name} ${present ? "saved to pantry" : "added to shopping"}.`);
-    setName("");
+  const [names, setNames] = useState("");
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
+  const busy = useRef(false);
+  function edit() { setNames(match?.names.join(", ") ?? ""); setEditing(true); setError(""); }
+  async function save(present: boolean, chosen?: string[]) {
+    if (busy.current || disabled) return;
+    busy.current = true; setPending(true); setError("");
+    try { await onChange({ text, present, ...(chosen ? { names: chosen } : {}) }); setEditing(false); }
+    catch (error) { setError(pantryError(error)); }
+    finally { busy.current = false; setPending(false); }
   }
   return <View style={{ gap: 8 }}>
-    <View style={styles.row}>
-      <Body muted>{item.status === "present" ? "Have it at home" : queued ? "On shopping list" : item.status === "missing" ? "Out at home" : "Not checked"}</Body>
-      {item.name ? <>
-        {item.status !== "present" && <Button secondary title="Have it" disabled={task.busy} onPress={() => void task.run(() => save(true))} />}
-        <Button secondary title={queued ? "Added to shopping" : "Need it"} disabled={task.busy || queued} onPress={() => void task.run(() => save(false))} />
-      </> : <Button secondary title={editing ? "Close ingredient entry" : "Track an ingredient"} onPress={() => setEditing(!editing)} />}
-    </View>
-    {!item.name && editing && <View style={{ gap: 8 }}>
-      <Body muted>This line needs a specific ingredient name. Track one item at a time.</Body>
-      <Field label="Ingredient to track" value={name} maxLength={120} editable={!task.busy} onChangeText={setName} />
+    <IngredientCheckbox label={label} checked={match?.present ?? false} disabled={disabled || pending || !match || editing}
+      onChange={() => { if (!match?.resolved) edit(); else void save(!match.present); }} />
+    {!!match?.chosen && !editing && <View style={styles.row}><Body muted>Using {match.names.join(" + ")}</Body><Button secondary title="Change ingredient" disabled={disabled || pending} onPress={edit} /></View>}
+    {editing && <View style={{ gap: 10 }}>
+      <Body muted>Choose the ingredient you have. For a combined line, separate names with commas: salt, pepper. We’ll remember this choice for this recipe.</Body>
+      <Field autoFocus label="Ingredient names" value={names} editable={!disabled && !pending} maxLength={1200} onChangeText={setNames} />
+      {!names.includes(",") && !disabled && !pending && <IngredientSuggestions value={names} onSelect={setNames} />}
       <View style={styles.row}>
-        <Button secondary title="Have it" disabled={task.busy || !name.trim()} onPress={() => void task.run(() => save(true))} />
-        <Button title="Add to shopping" disabled={task.busy || !name.trim()} onPress={() => void task.run(() => save(false))} />
+        <Button title="Save and check" disabled={disabled || pending || !names.trim()} onPress={() => void save(true, names.split(",").map(name => name.trim()).filter(Boolean))} />
+        <Button secondary title="Cancel" disabled={pending} onPress={() => setEditing(false)} />
       </View>
-      {!!saved && <Body muted>{saved}</Body>}
     </View>}
-    <ErrorMessage message={task.error} />
+    <ErrorMessage message={error} />
   </View>;
 }

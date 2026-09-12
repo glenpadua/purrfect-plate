@@ -1,12 +1,15 @@
 # Architecture and operations
 
+Start with [How the app works](how-the-app-works.md) for the plain-language explanation.
+
 ## Boundaries
 
 | Area | Owns |
 | --- | --- |
-| `app` | Thin routes, layout and authenticated API entry points |
-| `features/library` | Library screen, browsing state, data access and surprise picker |
-| `components`, `features/recipe-import` | Recipe UI and draft review |
+| `app/api` | Server-only import worker, compatibility recipe endpoints and local extraction API |
+| `apps/mobile/src/app` | The only product router, authentication gate and navigation |
+| `apps/mobile/src/features/library` | Library screen, browsing state, data access and surprise picker |
+| `apps/mobile/src/features/recipe-editor`, `apps/mobile/src/features/recipe-import` | Recipe UI and draft review |
 | `convex/access.ts`, `libraries.ts` | Verified-email invitation and membership |
 | `convex/recipes.ts` | Authenticated CRUD and photo ownership |
 | `convex/imports.ts`, `importWorker.ts` | Durable jobs, quota, deduplication and scheduling |
@@ -15,9 +18,9 @@
 | `lib/recipe-import/normalize.ts` | Publisher recipe preservation and passage-backed AI normalization |
 | `lib/recipe-import/images.ts` | Shared image storage policy |
 | `lib/cooking.ts` | Pure serving and same-dimension unit display transformations |
-| `features/cooking` | Session-only ingredient checklist and step navigation |
-| `features/pantry`, `convex/pantry.ts`, `lib/pantry.ts` | Shared ingredient presence, shopping reconciliation and conservative matching |
-| `features/recipe-source` | Validated, tap-to-load source players and attribution |
+| `apps/mobile/src/features/cooking` | Portion/unit adjustments and session-only step navigation |
+| `apps/mobile/src/features/pantry`, `convex/pantry.ts`, `lib/pantry.ts` | Shared ingredient presence, aliases, recipe bindings and independent shopping intent |
+| `apps/mobile/src/features/recipe-source` | Validated, tap-to-load source players and attribution |
 | `lib/recipe-lines.ts` | Shared grouped-text editing without losing unchanged provenance |
 | `services/media` | Replaceable Python caption/audio/frame service |
 
@@ -25,7 +28,7 @@
 
 Clerk issues the `convex` JWT with audience `convex`, `email`, and `email_verified`. Convex exposes the latter as `identity.emailVerified`. Every user-facing data function checks library membership. Clients cannot choose a different library ID. Both invited addresses join the same library.
 
-`imports.start({url})` returns a durable job ID. `get` and `list` provide reactive progress. `retry` explicitly retries failures. `save({id,draft})` atomically creates one recipe and returns its ID; repeating the save returns that recipe. `recipes` exposes list/listPage, get, create, update, remove and markCooked. Mobile can use these same functions with Clerk authentication.
+`imports.start({url})` returns a durable job ID. `get` and `list` provide reactive progress. `retry` explicitly retries failures. `save({id,draft})` atomically creates one recipe and returns its ID; repeating the save returns that recipe. `recipes` exposes list/listPage, get, create, update, remove and markCooked. Web and mobile use these same functions with Clerk authentication.
 
 Jobs progress from queued to processing to needs_review to saved, or fail. A six-minute lease detects interruption; attempt numbers fence off late responses. Limits: 30 starts/retries per library per UTC day, two running jobs, a 15-minute cooldown after each three failed attempts on a link. Attempt numbers remain monotonic so an old worker cannot overwrite a retry. Convex calls the private Next.js worker with a machine secret. That worker calls the separate private Python service. The worker has a 300-second platform ceiling and a 260-second processing budget. Page reads are capped at 20 seconds, metadata at 30, media at 150 and normalization at 90; each stage uses the remaining budget while reserving time for normalization and saving. Large carousels may remain partial; independently durable OCR stages are a future scaling improvement.
 
@@ -74,7 +77,7 @@ The acceptance checklist lives in `production-plan.md`. Tests and a successful d
 
 ## Cooking and extension seams
 
-The recipe detail screen delegates to `PantryCookingPanel`, which supplies shared pantry controls to the reusable `CookingPanel`. Cooking adjustments never write quantities back to Convex. `ingredientForCooking` is the client-safe pure interface for serving and unit display; a native UI can reuse it without importing web components. Ambiguous ranges, package quantities and unspecified volume conventions stay as written. The original method and source amounts remain available. See [cooking behavior](cooking.md) and [pantry semantics](pantry.md).
+The recipe detail screen delegates to `PantryCookingPanel`, which supplies shared pantry controls to the reusable `CookingPanel`. Cooking adjustments never write quantities back to Convex. `ingredientForCooking` is the client-safe pure interface for serving and unit display; both web and native render its result through the same component. Ambiguous ranges, package quantities and unspecified volume conventions stay as written. The original method and source amounts remain available. See [cooking behavior](cooking.md) and [pantry semantics](pantry.md).
 
 Keep retrieval, normalization, image processing, durable job state and presentation separate. Add a provider behind the retrieval boundary rather than branching by provider in route components. Prefer explicit domain interfaces over generic service/repository layers. Tests call the same parser, authenticated mutations and UI controls that production uses; add a failing behavior test at those seams before each functional change. Do not mock internal helpers just to mirror their implementation.
 
@@ -85,10 +88,17 @@ Keep retrieval, normalization, image processing, durable job state and presentat
 
 ## Universal product UI boundary (12 September 2026)
 
-The product UI is moving to the Expo application in `apps/mobile`, targeting native iOS/Android and browsers with React Native Web. The folder name is historical. Expo Router route files compose the same feature screens for all targets; there are no parallel web/native copies of library, detail, cooking, editor, imports, pantry or account screens. `ui/product-shell.tsx` owns responsive navigation, and `ui/index.tsx` owns the shared typography and controls. Browser breakpoints change layout, not feature ownership.
+The only product UI is the Expo application in `apps/mobile`, targeting native iOS/Android and browsers with React Native Web. The folder name is historical. Expo Router route files compose the same feature screens for all targets; there are no parallel web/native copies of library, detail, cooking, editor, imports, pantry or account screens. `ui/product-shell.tsx` owns responsive navigation, and `ui/index.tsx` owns the shared typography and controls. Browser breakpoints change layout, not feature ownership.
 
 Keep platform differences at authentication, device/browser media handling and provider embeds. Both platforms use Convex feature hooks and the generated API contract. `packages/recipe-core` continues to expose pure domain helpers, image policy, source URL validation and the existing palette. Outfit font assets are loaded by the universal root so browser/native text metrics share the same source.
 
-The root Next 16 App Router application stays operational during this migration. Its server APIs and extraction boundaries are not imported into Metro. No legacy Next/Expo adapter is used. Following Glen's deployment request on 12 September 2026, the production site serves the Expo web SPA for product paths while preserving `/api/*` on the existing server. `scripts/build-product-web.mjs` exports the client with the deployment's public Convex/Clerk configuration into ignored `public/universal`; `next.config.mjs` rewrites product deep links and exported assets. The previous Vercel deployment remains available for rollback. SPA rendering trades request-time HTML/SEO for one authenticated application implementation. Next can eventually be removed once its remaining server endpoints move to another host/runtime.
+The root Next 16 application is now a server-only gateway. Its product pages, layout/providers, old components, feature screens and Tailwind/shadcn dependencies have been removed. Its server APIs and extraction boundaries are not imported into Metro. No legacy Next/Expo adapter is used. Following Glen's deployment request on 12 September 2026, the production site serves the Expo web SPA for product paths while preserving `/api/*` on the existing server. `scripts/build-product-web.mjs` exports the client with the deployment's public Convex/Clerk configuration into ignored `public/universal`; `next.config.mjs` routes exported assets and falls back to Expo for all non-API screens, including unknown routes. Missing API and bundle paths stay out of that fallback. The previous Vercel deployment remains available for rollback. SPA rendering trades request-time HTML/SEO for one authenticated application implementation. Next can eventually be removed once its remaining server endpoints move to another host/runtime.
 
-See [the mobile/universal plan](mobile-plan.md#universal-ui-correction--12-september-2026) for platform adapters, local commands, verification evidence, known parity gaps and the 500-row compatibility query limit. Local browser and simulator success are not authorization to replace production.
+See [the current mobile/universal record](mobile-plan.md) for platform adapters, local commands, verification evidence, known parity gaps and the 500-row compatibility query limit. Local browser and simulator success are not authorization to replace production.
+
+
+## Pantry integration
+
+The separate pantry task is preserved in commit `076f532`. Its Convex functions, schema additions, deterministic ingredient dictionary and backend tests were brought across intact. The Expo UI implements its contract: checkboxes mean presence at home, renames keep aliases and require confirmation for collisions, shopping is independent, and Clear/Undo restores the removed snapshot without removing concurrent additions. Pantry pages contain 60 entries; library coverage queries are grouped into 20-recipe batches. The previous 300-row pantry view is gone.
+
+`pantry.initialize` upgrades a library idempotently before its new pantry queries are enabled. Preserve the import dismissal field and `by_library_dismissed_created` index alongside the pantry schema. Deploy the combined schema; deploying the older pantry checkout alone can remove that newer index. See [pantry.md](pantry.md) for API and migration details.

@@ -1,10 +1,13 @@
 # Hosted recipe library: release and acceptance
 
+**Current architecture:** Expo is the only product UI for web and mobile. Next.js is server-only. The older acceptance entries below record the earlier UI and do not describe current pantry semantics; see [the current pantry contract](pantry.md), [mobile record](mobile-plan.md), and [architecture guide](how-the-app-works.md).
+
+
 Last reconciled: 12 September 2026. The hosted app is [Purrfect Plate](https://purrfect-plate-theta.vercel.app). This document separates verified production behavior from work awaiting release or acceptance. It is the release checklist, not a chronological build log.
 
 ## Architecture and deployment
 
-Vercel hosts the Next.js app and a private Python media worker. Production Convex owns recipes, durable import jobs, library membership, pantry and shopping state. Clerk supplies individual sign-ins into one shared library for Glen and Millusha. The future mobile client will reuse the authenticated Convex functions and server-side importer.
+Vercel hosts the Next.js app and a private Python media worker. Production Convex owns recipes, durable import jobs, library membership, pantry and shopping state. Clerk supplies individual sign-ins into one shared library for Glen and Millusha. The shared Expo web/native client uses the authenticated Convex functions and server-side importer.
 
 Both Vercel projects auto-deploy from the existing `main` branch. Commit `993c94d` produced a ready web deployment; its media deployment exposed an overbroad root ignore rule. Commit `a53d103` fixed that rule and produced a ready Git-triggered media deployment. Convex deployment remains a separate step: deploy additive schema/functions before a web release that depends on them.
 

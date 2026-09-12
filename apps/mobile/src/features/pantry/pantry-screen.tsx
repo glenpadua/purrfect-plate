@@ -1,137 +1,106 @@
-import { useState } from "react";
-import { Text, View } from "react-native";
+import { useRef, useState } from "react";
+import { Platform, Text, View, useWindowDimensions } from "react-native";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
+import { api } from "@purrfect-plate/recipe-core/api";
 import { shareShopping } from "../../lib/share-shopping";
-import {
-  Body,
-  Button,
-  ErrorMessage,
-  Field,
-  Heading,
-  Loading,
-  Page,
-  styles,
-  Title,
-  useTask,
-} from "../../ui";
-import { usePantry } from "./data";
+import { Body, Button, ErrorMessage, Field, Heading, Loading, Page, styles, Title, colors } from "../../ui";
+import { usePantryReady } from "./data";
+import { IngredientEntry, pantryError } from "./ingredient-entry";
+import { IngredientRow } from "./ingredient-row";
+
+type PantryRow = FunctionReturnType<typeof api.pantry.page>["page"][number];
+type ShoppingRow = FunctionReturnType<typeof api.pantry.shopping>[number];
+function useKitchenActions() {
+  return {
+    setPresence: useMutation(api.pantry.setPresence),
+    addToShopping: useMutation(api.pantry.addToShopping),
+    removeShopping: useMutation(api.pantry.removeShopping),
+    clearShopping: useMutation(api.pantry.clearShopping),
+    restoreShopping: useMutation(api.pantry.restoreShopping),
+    rename: useMutation(api.pantry.rename),
+    renameShopping: useMutation(api.pantry.renameShopping),
+  };
+}
 export function PantryScreen() {
-  const pantry = usePantry();
-  const [name, setName] = useState("");
-  const task = useTask();
+  const { ready, error, retry } = usePantryReady();
+  const [search, setSearch] = useState("");
+  const page = usePaginatedQuery(api.pantry.page, ready ? { search } : "skip", { initialNumItems: 60 });
+  const shopping = useQuery(api.pantry.shopping, ready ? {} : "skip");
+  const actions = useKitchenActions();
+  return <KitchenView items={ready ? page.results : undefined} shopping={shopping} search={search} onSearch={setSearch}
+    loading={page.status === "LoadingFirstPage"} hasMore={page.status === "CanLoadMore" || page.status === "LoadingMore"}
+    loadingMore={page.status === "LoadingMore"} onLoadMore={() => page.loadMore(60)} openingError={error} onRetry={retry} actions={actions} />;
+}
+
+export function KitchenView({ items, shopping, search, onSearch, loading, hasMore, loadingMore, onLoadMore, openingError, onRetry, actions }: {
+  items?: PantryRow[]; shopping?: ShoppingRow[]; search: string; onSearch: (value: string) => void;
+  loading?: boolean; hasMore?: boolean; loadingMore?: boolean; onLoadMore?: () => void; openingError?: string; onRetry?: () => void;
+  actions: ReturnType<typeof useKitchenActions>;
+}) {
+  const { width } = useWindowDimensions();
+  const [undo, setUndo] = useState<{ message: string; action: () => Promise<unknown> } | null>(null);
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
+  const busy = useRef(false);
   const [copyStatus, setCopyStatus] = useState("");
-  const shoppingText = pantry.state?.shopping.map(item => `☐ ${item.name}`).join("\n") ?? "";
-  return (
-    <Page>
-      <Title>In our kitchen</Title>
-      <Body muted>
-        Remember what’s available. This list does not track quantities or expiry
-        dates.
-      </Body>
-      <Field
-        label="Ingredient name"
-        value={name}
-        onChangeText={setName}
-        placeholder="e.g. red onion"
-      />
-      <View style={styles.row}>
-        <Button
-          title="I have this"
-          disabled={task.busy || !name.trim()}
-          onPress={() =>
-            void task.run(async () => {
-              await pantry.setPresence({ name, present: true });
-              setName("");
-            })
-          }
-        />
-        <Button
-          secondary
-          title="Add to shopping"
-          disabled={task.busy || !name.trim()}
-          onPress={() =>
-            void task.run(async () => {
-              await pantry.addToShopping({ name });
-              setName("");
-            })
-          }
-        />
+  const shoppingText = shopping?.map(item => item.name).join("\n") ?? "";
+  async function run(action: () => Promise<unknown>) {
+    if (busy.current) return;
+    busy.current = true; setPending(true); setError("");
+    try { await action(); } catch (error) { setError(pantryError(error)); }
+    finally { busy.current = false; setPending(false); }
+  }
+  return <Page>
+    <Title>Our kitchen</Title>
+    <Body muted>What’s at home, and what to pick up. Shared by both of you.</Body>
+    <ErrorMessage message={openingError} />
+    {!!openingError && onRetry && <Button title="Try again" onPress={onRetry} />}
+    {!openingError && (items === undefined || shopping === undefined ? <Loading /> : <View style={{ flexDirection: width >= 900 ? "row" : "column", gap: 32, alignItems: "flex-start" }}>
+      <View style={{ width: width >= 900 ? "55%" : "100%", gap: 16 }}>
+        <Heading>Pantry</Heading>
+        <Body muted>At home · Tap a name to rename it. Remove it when you run out.</Body>
+        <IngredientEntry label="Add a pantry ingredient" knownNames={items.map(item => item.name)} disabled={pending} onAdd={name => actions.setPresence({ name, present: true })} />
+        <Field label="Search pantry" placeholder="Find an ingredient…" value={search} onChangeText={onSearch} />
+        {loading ? <Loading /> : items.length ? items.map(item => <IngredientRow key={item.id} name={item.name} disabled={pending}
+          onRename={(name, mergeInto) => actions.rename({ ingredientId: item.id, name, ...(mergeInto ? { mergeInto } : {}) })}
+          onRemove={async () => {
+            await actions.setPresence({ ingredientId: item.id, present: false });
+            setUndo({ message: `${item.name} removed from pantry.`, action: () => actions.setPresence({ ingredientId: item.id, present: true }) });
+          }} />) : <Body muted>{search ? "No ingredients found. Try another name, or add it above." : "Start with what’s in your kitchen. Add a few staples above, or check what you have in any recipe."}</Body>}
+        {hasMore && onLoadMore && <Button secondary title={loadingMore ? "Loading…" : "Show more ingredients"} disabled={loadingMore} onPress={onLoadMore} />}
       </View>
-      <ErrorMessage message={task.error} />
-      {!pantry.state ? (
-        <Loading />
-      ) : (
-        <>
-          <Heading>Shopping list · {pantry.state.shopping.length}</Heading>
-          <Button secondary title="Copy or share list" disabled={task.busy || !shoppingText} onPress={() => void task.run(async () => {
-            setCopyStatus("Select and copy your list below.");
-            setCopyStatus(await shareShopping(shoppingText));
+      <View style={{ flex: width >= 900 ? 1 : undefined, width: width >= 900 ? undefined : "100%", gap: 16, padding: 20, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
+        <Heading>Shopping list · {shopping.length}</Heading>
+        <Body muted>Collect what you need. Copy it to your shopping app, then clear it whenever you like.</Body>
+        <IngredientEntry label="Add to shopping list" knownNames={items.map(item => item.name)} maxLength={3000} disabled={pending} onAdd={name => actions.addToShopping({ name })} />
+        {shopping.map(item => <IngredientRow key={item.id} name={item.name} disabled={pending} maxLength={item.ingredientId ? 120 : 3000}
+          onRename={(name, mergeInto) => actions.renameShopping({ id: item.id, name, ...(mergeInto ? { mergeInto } : {}) })}
+          onRemove={async () => {
+            await actions.removeShopping({ id: item.id });
+            setUndo({ message: `${item.name} removed from shopping.`, action: () => actions.restoreShopping({ items: [{ name: item.name, createdAt: item.createdAt, ...(item.ingredientId ? { ingredientId: item.ingredientId } : {}) }] }) });
+          }} />)}
+        {!shopping.length && <Body muted>Nothing to pick up yet. Add missing ingredients from a recipe, or type something above.</Body>}
+        <View style={styles.row}>
+          <Button secondary title={Platform.OS === "web" ? "Copy list" : "Share list"} disabled={pending || !shoppingText} onPress={() => void run(async () => {
+            setCopyStatus("Select and copy your list below."); setCopyStatus(await shareShopping(shoppingText));
           })} />
-          {!!copyStatus && <View style={{ gap: 8 }}>
-            <Text selectable style={styles.text}>{shoppingText}</Text>
-            <Body muted>{copyStatus}</Body>
-          </View>}
-          {!pantry.state.shopping.length && (
-            <Body muted>Nothing to buy just yet.</Body>
-          )}
-          {pantry.state.shopping.map((item) => (
-            <View key={item.id} style={styles.section}>
-              <Body>{item.name}</Body>
-              <View style={styles.row}>
-                <Button
-                  title={`Bought ${item.name}`}
-                  disabled={task.busy}
-                  onPress={() =>
-                    void task.run(() => pantry.purchase({ id: item.id }))
-                  }
-                />
-                <Button
-                  secondary
-                  title="Remove from list"
-                  disabled={task.busy}
-                  onPress={() =>
-                    void task.run(() => pantry.removeShopping({ id: item.id }))
-                  }
-                />
-              </View>
-            </View>
-          ))}
-          <Heading>Pantry · {pantry.state.pantry.length}</Heading>
-          {pantry.state.pantry.map((item) => (
-            <View key={item.id} style={styles.section}>
-              <Body>
-                {item.name} · {item.present ? "Available" : "Not available"}
-              </Body>
-              <Body muted>
-                Confirmed {new Date(item.updatedAt).toLocaleDateString()}
-              </Body>
-              <View style={styles.row}>
-                <Button secondary title={item.present ? "Still have it" : "Have it"} disabled={task.busy}
-                  onPress={() => void task.run(() => pantry.setPresence({ name: item.name, present: true }))} />
-                {item.present && <Button secondary title="Mark out" disabled={task.busy}
-                  onPress={() => void task.run(() => pantry.setPresence({ name: item.name, present: false }))} />}
-                <Button
-                  secondary
-                  title={pantry.state?.shopping.some(entry => entry.key === item.key) ? "On shopping list" : "Need to buy"}
-                  disabled={task.busy || pantry.state?.shopping.some(entry => entry.key === item.key)}
-                  onPress={() =>
-                    void task.run(() =>
-                      pantry.addToShopping({ name: item.name }),
-                    )
-                  }
-                />
-                <Button
-                  secondary
-                  title="Forget"
-                  disabled={task.busy}
-                  onPress={() =>
-                    void task.run(() => pantry.forget({ id: item.id }))
-                  }
-                />
-              </View>
-            </View>
-          ))}
-        </>
-      )}
-    </Page>
-  );
+          <Button secondary title="Clear list" disabled={pending || !shopping.length} onPress={() => void run(async () => {
+            const snapshot = await actions.clearShopping({});
+            setUndo({ message: "Shopping list cleared.", action: () => actions.restoreShopping({ items: snapshot }) });
+            setCopyStatus("");
+          })} />
+        </View>
+        {!!copyStatus && <View style={{ gap: 8 }}>
+          <Body muted>{copyStatus}</Body>
+          {copyStatus.startsWith("Select") && <Text selectable accessibilityLabel="Your list to copy" style={styles.text}>{shoppingText}</Text>}
+        </View>}
+      </View>
+    </View>)}
+    <ErrorMessage message={error} />
+    {undo && <View style={styles.section}>
+      <Text accessibilityLiveRegion="polite" style={styles.text}>{undo.message}</Text>
+      <Button secondary title="Undo" disabled={pending} onPress={() => void run(async () => { await undo.action(); setUndo(null); })} />
+    </View>}
+  </Page>;
 }

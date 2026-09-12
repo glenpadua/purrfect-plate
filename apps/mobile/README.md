@@ -9,11 +9,9 @@ pnpm product:web
 xcrun simctl openurl booted exp://127.0.0.1:8082
 ```
 
-The existing Next site stays intact throughout local validation. See [the migration and verification record](../../docs/mobile-plan.md#universal-ui-correction--12-september-2026).
+The repository has one product frontend: this application. Root Next.js hosts server APIs and this application's static web export only. See [how the app works](../../docs/how-the-app-works.md) and [current verification and next steps](../../docs/mobile-plan.md).
 
-# Purrfect Plate native app
-
-Expo SDK 57 / React Native 0.86.3. The web app stays at the repository root. Use Node 24 and pnpm 10 from the root; do not create another lockfile or install with npm inside this directory.
+Expo SDK 57 / React Native 0.86.3. Use Node 24 and pnpm 10 from the root; do not create another lockfile or install with npm inside this directory.
 
 ## Run
 
@@ -43,12 +41,12 @@ Jest exercises native controls and the editor's submitted content. The root Vite
 
 - `src/app`: routes and provider/navigation composition only.
 - `src/features/*/data.ts`: Convex bindings. Backend functions still authorize membership.
-- `src/features`: native screens and UI state; forms retain untouched source lines.
-- `src/ui`: backend-independent native controls.
+- `src/features`: shared web/native screens and UI state; forms retain untouched source lines.
+- `src/ui`: shared controls and responsive layout.
 - `src/lib/recipe-photo.ts`: device picker/encoder adapter; shared policy and Convex ownership checks still apply.
 - `packages/recipe-core`: intentional pure exports, generated API/type references and shared palette. No server extraction code is bundled.
 
-`palette.json` is the shared colour source. Run `pnpm design:tokens` after changing it to regenerate the web CSS. Native reads the same values directly. The palette preserves the web's established warm OKLCH colours as portable sRGB values.
+`packages/recipe-core/palette.json` is the shared colour source. Both web and native read it directly; no separate CSS generation is needed. The palette preserves the web's established warm OKLCH colours as portable sRGB values.
 
 Development uses `basic-poodle-462`, including its existing private shared library. The hosted shared web app at https://purrfect-plate-theta.vercel.app uses production `spotted-gazelle-950`; root `pnpm build` supplies its public configuration and exports this UI into the Next deployment. Physical iPhone distribution remains separate. Never embed backend/provider credentials or enable an authentication bypass for testing.
 

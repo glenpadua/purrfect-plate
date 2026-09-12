@@ -5,6 +5,8 @@ export { recipeLinesFromText, recipeLinesToText } from "../../lib/recipe-lines";
 export type { RecipeLine } from "../../lib/recipe-lines";
 export {
   ingredientIdentity,
+  ingredientSuggestions,
+  normalizeIngredientName,
   ingredientAvailability,
   recipePantryCoverage,
 } from "../../lib/pantry";

@@ -1,6 +1,6 @@
 # Inline recipe sources
 
-`features/recipe-source/recipe-source.tsx` owns the source display. The detail screen passes only the saved source URL, creator attribution, and recipe name. This is separate from extraction: playing a source does not re-import it, call an AI provider, store video, or change recipe facts.
+`apps/mobile/src/features/recipe-source/source-panel.tsx` owns the source display. The detail screen passes only the saved source URL, creator attribution, and recipe name. This is separate from extraction: playing a source does not re-import it, call an AI provider, store video, or change recipe facts.
 
 The source appears above ingredients and cook mode. Every supported provider has the same heading, attribution, tap-to-load action, and permanent **Open original** link. Hiding the source removes its player. Provider UI and branding remain intact; the surrounding app is consistent, but the controls inside these cross-origin players cannot be made identical.
 
@@ -27,12 +27,14 @@ YouTube documents its iframe URL, mobile inline playback, minimum size, and supp
 
 TikTok documents [the iframe player, controls, and error messages](https://developers.tiktok.com/docs/en/embed-player). Reported player errors are accepted only from the mounted iframe and TikTok's exact origin. We keep normal playback/fullscreen controls.
 
-Instagram uses its public-post renderer rather than relying on an undocumented fixed-height iframe URL. References: [Instagram embedding help](https://help.instagram.com/620154495870484) and [Meta oEmbed documentation](https://developers.facebook.com/docs/instagram-platform/oembed/). These Meta documentation pages returned HTTP 429 during the September 12, 2026 research pass, so their current full text could not be rechecked. The SDK is loaded once through Next.js `Script`, processes newly mounted posts, and owns only a dedicated DOM container. We do not call Meta's token-protected oEmbed API.
+Instagram uses its public-post renderer rather than relying on an undocumented fixed-height iframe URL. References: [Instagram embedding help](https://help.instagram.com/620154495870484) and [Meta oEmbed documentation](https://developers.facebook.com/docs/instagram-platform/oembed/). These Meta documentation pages returned HTTP 429 during the September 12, 2026 research pass, so their current full text could not be rechecked. The browser adapter loads the SDK on demand, processes newly mounted posts, and owns only a dedicated DOM container. We do not call Meta's token-protected oEmbed API.
 
 Private, deleted, age/region-restricted, embedding-disabled, login-gated, or browser-blocked sources can fail. An iframe `load` event only means its document loaded; it is not proof that the video can play. A slow-load message and the permanent external link keep the recipe usable. Instagram may show a post or carousel instead of a video. Orientation is inferred only from an explicit YouTube Shorts route; a short shared as a watch link can be letterboxed.
 
-This is the responsive web implementation. The future Expo app needs a reviewed WebView/native source strategy; this component is not a React Native player.
+Shared load/hide controls render through a browser embed adapter or a native WebView adapter. Product presentation is one Expo component; provider integration is platform-specific.
 
 ## Verification
 
-Three component-interface tests cover tap-to-load/hide, preserved attribution, safe provider URL construction, malformed/lookalike URL fallback, and Instagram's deferred markup. They do not simulate third-party playback. Hosted browser playback was also verified on the supplied YouTube, Instagram and TikTok samples: their video playback clocks advanced beyond zero. Physical iPhone playback, other accounts and restricted-cookie configurations remain acceptance checks.
+The former Next frontend tests covered tap-to-load/hide, preserved attribution, safe provider URL construction, malformed/lookalike URL fallback, and Instagram's deferred markup. They do not simulate third-party playback. Hosted browser playback was also verified on the supplied YouTube, Instagram and TikTok samples: their video playback clocks advanced beyond zero. Physical iPhone playback, other accounts and restricted-cookie configurations remain acceptance checks.
+
+The current shared URL policy is tested in `lib/recipe-source.test.ts`; Expo source controls are tested with the native component suite. Those checks do not prove third-party playback.

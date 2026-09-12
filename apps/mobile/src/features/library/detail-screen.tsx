@@ -14,10 +14,8 @@ import {
   useTask,
 } from "../../ui";
 import { useRecipe, useRecipeActions } from "./data";
-import { usePantry } from "../pantry/data";
-import { RecipeShopping, IngredientPantry } from "../pantry/recipe-pantry";
+import { PantryCookingPanel } from "../pantry/recipe-pantry";
 import { SourcePanel } from "../recipe-source/source-panel";
-import { CookingPanel } from "../cooking/cooking-panel";
 function KeepAwake() {
   useKeepAwake();
   return null;
@@ -27,7 +25,6 @@ export function DetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const recipe = useRecipe(id as Id<"recipes">);
   const actions = useRecipeActions();
-  const pantry = usePantry();
   const task = useTask();
   const [cooking, setCooking] = useState(false);
   if (recipe === undefined) return <Loading />;
@@ -93,12 +90,11 @@ export function DetailScreen() {
           <ErrorMessage message={task.error} />
         </View>
         <View style={{ flex: 1, width: "100%", gap: 18 }}>
-          <RecipeShopping ingredients={recipe.ingredients ?? []} pantry={pantry} />
-          <CookingPanel
+          <PantryCookingPanel
             key={recipe._id}
             recipe={recipe}
             onCookingChange={setCooking}
-            ingredientActions={(text) => <IngredientPantry text={text} pantry={pantry} />}
+            recipeId={recipe._id}
           />
           {recipe.note && <Body>{recipe.note}</Body>}
           <Button

@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { View, ScrollView, useWindowDimensions } from "react-native";
 import { router } from "expo-router";
-import { recipePantryCoverage } from "@purrfect-plate/recipe-core";
+import { useQueries } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
+import { api } from "@purrfect-plate/recipe-core/api";
 import {
   Body,
   Button,
@@ -15,7 +17,7 @@ import {
   ErrorMessage,
 } from "../../ui";
 import { useProductLibrary, useRecipeActions } from "./data";
-import { usePantry } from "../pantry/data";
+import { usePantryReady } from "../pantry/data";
 import { RecipeCard } from "./recipe-card";
 export function LibraryScreen() {
   const actions = useRecipeActions();
@@ -27,21 +29,33 @@ export function LibraryScreen() {
   const [choice, setChoice] = useState<string>();
   const { recipes: matchingRecipes, tags: allTags } = useProductLibrary(search, tags);
   const recipes = importedOnly ? matchingRecipes?.filter(recipe => recipe.origin === "imported") : matchingRecipes;
-  const pantry = usePantry();
+  const pantry = usePantryReady();
+  const coverageQueries = useMemo(() => {
+    const requests: Record<string, { query: typeof api.pantry.coverage; args: { recipeIds: NonNullable<typeof matchingRecipes>[number]["_id"][] } }> = {};
+    if (pantry.ready && pantryFirst && matchingRecipes) {
+      for (let i = 0; i < matchingRecipes.length; i += 20)
+        requests[String(i)] = { query: api.pantry.coverage, args: { recipeIds: matchingRecipes.slice(i, i + 20).map(recipe => recipe._id) } };
+    }
+    return requests;
+  }, [pantry.ready, pantryFirst, matchingRecipes]);
+  const coverageResults = useQueries(coverageQueries);
+  const coverageError = Object.values(coverageResults).some(result => result instanceof Error);
+  const coverageLoading = Object.keys(coverageQueries).some(key => !coverageResults[key]);
+  const coverage = new Map<string, { present: number; total: number }>();
+  for (const result of Object.values(coverageResults))
+    if (Array.isArray(result)) for (const item of result as FunctionReturnType<typeof api.pantry.coverage>) coverage.set(item.recipeId, item);
+
   const { width } = useWindowDimensions();
   const columns = width >= 1000 ? 4 : width >= 650 ? 3 : 2;
   const ranked = recipes?.map((recipe) => ({
     recipe,
-    coverage: recipePantryCoverage(
-      recipe.ingredients ?? [],
-      pantry.state?.pantry ?? [],
-    ),
+    coverage: coverage.get(recipe._id),
   }));
   if (pantryFirst)
     ranked?.sort(
       (a, b) =>
-        b.coverage.present / (b.coverage.total || 1) -
-        a.coverage.present / (a.coverage.total || 1),
+        (b.coverage?.present ?? 0) / (b.coverage?.total || 1) -
+        (a.coverage?.present ?? 0) / (a.coverage?.total || 1),
     );
   const selected = recipes?.find((recipe) => recipe._id === choice);
   function choose() {
@@ -113,10 +127,12 @@ export function LibraryScreen() {
         <Button
           secondary={!pantryFirst}
           title={pantryFirst ? "✓ Use my pantry" : "Use my pantry"}
-          disabled={!pantry.state}
+          disabled={!pantry.ready}
           onPress={() => setPantryFirst(!pantryFirst)}
         />
       </View>
+      <ErrorMessage message={pantry.error || (coverageError ? "Couldn’t check pantry matches. Please try again." : undefined)} />
+      {!!pantry.error && <Button title="Try again" onPress={pantry.retry} />}
       {selected && (
         <View style={styles.section}>
           <Heading>The kitchen cat recommends</Heading>
@@ -170,7 +186,7 @@ export function LibraryScreen() {
               <RecipeCard recipe={recipe} />
               {pantryFirst && (
                 <Body muted>
-                  {coverage.total
+                  {!coverage || coverageLoading || coverageError ? "Checking pantry…" : coverage.total
                     ? `${coverage.present}/${coverage.total} pantry matches`
                     : "No ingredient list to match"}
                 </Body>

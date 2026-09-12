@@ -1,12 +1,12 @@
 import { useState, type ReactNode } from "react";
-import { Platform, Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import {
   ingredientForCooking,
   servingCount,
   type CookingUnits,
   type RecipeLine,
 } from "@purrfect-plate/recipe-core";
-import { Body, Button, Heading, styles, colors } from "../../ui";
+import { Body, Button, Heading, styles } from "../../ui";
 
 type CookingRecipe = {
   servings?: string;
@@ -16,17 +16,20 @@ type CookingRecipe = {
 };
 export function CookingPanel({
   recipe,
-  ingredientActions,
+  ingredientControl,
+  ingredientsIntro,
+  ingredientsFooter,
   onCookingChange,
 }: {
   recipe: CookingRecipe;
-  ingredientActions?: (text: string) => ReactNode;
+  ingredientControl?: (text: string, displayed: string, index: number) => ReactNode;
+  ingredientsIntro?: ReactNode;
+  ingredientsFooter?: ReactNode;
   onCookingChange?: (active: boolean) => void;
 }) {
   const base = servingCount(recipe.servings);
   const [servings, setServings] = useState<number | null>(null);
   const [units, setUnits] = useState<CookingUnits>("original");
-  const [checked, setChecked] = useState<Set<number>>(new Set());
   const [step, setStep] = useState<number | null>(null);
   const [finished, setFinished] = useState(false);
   const count = servings ?? base;
@@ -86,81 +89,25 @@ export function CookingPanel({
         Check ambiguous amounts yourself.
       </Body>
       <Heading>Ingredients</Heading>
+      {ingredientsIntro}
       {(recipe.ingredients ?? []).map((line, i, lines) => {
         const displayed = ingredientForCooking(line.text, { factor, units });
-        const toggle = () => setChecked(previous => {
-          const next = new Set(previous);
-          if (next.has(i)) next.delete(i);
-          else next.add(i);
-          return next;
-        });
         return (
           <View key={`${i}:${line.text}`} style={{ gap: 7 }}>
             {line.group && line.group !== lines[i - 1]?.group && (
               <Heading>{line.group}</Heading>
             )}
-            <Pressable
-              accessibilityRole="checkbox"
-              accessibilityLabel={displayed.text}
-              accessibilityState={{ checked: checked.has(i) }}
-              aria-checked={checked.has(i)}
-              onPress={toggle}
-              {...(Platform.OS === "web" ? {
-                // React Native Web only supplies Space activation for button roles.
-                onKeyDown: (event: { key: string; repeat: boolean; preventDefault: () => void }) => {
-                  if (event.key === " ") {
-                    event.preventDefault();
-                    if (!event.repeat) toggle();
-                  }
-                },
-              } : {})}
-              style={{
-                minHeight: 48,
-                flexDirection: "row",
-                gap: 12,
-                alignItems: "center",
-              }}
-            >
-              <View
-                accessible={false}
-                pointerEvents="none"
-                style={{
-                  width: 24,
-                  height: 24,
-                  flexShrink: 0,
-                  borderWidth: 2,
-                  borderRadius: 5,
-                  borderColor: checked.has(i) ? colors.primary : colors.muted,
-                  backgroundColor: checked.has(i) ? colors.primary : colors.surface,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {checked.has(i) && <View style={{ width: 7, height: 12, borderRightWidth: 2, borderBottomWidth: 2, borderColor: "#fffaf4", transform: [{ translateY: -1 }, { rotate: "45deg" }] }} />}
-              </View>
-              <Text
-                style={[
-                  styles.text,
-                  { flex: 1 },
-                  checked.has(i) && {
-                    textDecorationLine: "line-through",
-                    opacity: 0.5,
-                  },
-                ]}
-              >
-                {displayed.text}
-              </Text>
-            </Pressable>
+            {ingredientControl ? ingredientControl(line.text, displayed.text, i) : <Body>{displayed.text}</Body>}
             {displayed.text !== line.text && (
               <Body muted>Original: {line.text}</Body>
             )}
             {displayed.unchanged && (factor !== 1 || units !== "original") && (
               <Body muted>Kept as written — check this amount.</Body>
             )}
-            {ingredientActions?.(line.text)}
           </View>
         );
       })}
+      {ingredientsFooter}
       {finished && <Body>Cooking finished. Enjoy your meal!</Body>}
       {instructions.length > 0 &&
         (currentStep === null ? (

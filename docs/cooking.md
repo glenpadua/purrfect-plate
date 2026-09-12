@@ -16,7 +16,7 @@ Conversion factors use US customary units (1 oz = 28.349523125 g; 1 US cup = 236
 
 ## Code and tests
 
-`lib/cooking.ts` exposes `servingCount` and `ingredientForCooking`. They hide parsing and conversion rules behind a small pure interface and are reusable by a future Expo client. `features/cooking/cooking-panel.tsx` owns web session state and accessible controls. It has no database or provider dependency.
+`lib/cooking.ts` exposes `servingCount` and `ingredientForCooking`. They hide parsing and conversion rules behind a small pure interface and are used by the shared Expo client. `apps/mobile/src/features/cooking/cooking-panel.tsx` owns shared web/native session state and accessible controls. It has no database or provider dependency.
 
 `lib/recipe-lines.ts` is used by manual editing and import review. `## Heading` marks a group. Unchanged lines keep original text and source IDs, including multiline source steps; edited lines lose inherited source attribution. Publisher notes are separate from personal kitchen notes, and new import warnings are separate from both.
 
@@ -24,4 +24,4 @@ Test through production interfaces: parser → normalizer, authenticated Convex 
 
 ## Explicit limits and next steps
 
-This web cook mode does not promise screen wake-lock, offline availability, persistent session progress or timers. Test on the two actual iPhones before claiming mobile kitchen acceptance. An Expo implementation can add native wake-lock and durable local progress without changing stored recipe quantities or duplicating conversion logic. More comprehensive ingredient parsing should preserve uncertainty and source text rather than silently guessing units or package contents.
+The shared Expo cook mode keeps the native screen awake during cooking. It does not yet provide offline recipes, persistent session progress or timers. Ingredient checkboxes represent shared pantry presence, not completed preparation; checking one leaves its text readable and updates the pantry. Portion changes retain the original ingredient identity. See [pantry behavior](pantry.md). Physical iPhone kitchen acceptance remains open.

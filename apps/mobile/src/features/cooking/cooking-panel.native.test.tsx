@@ -15,12 +15,6 @@ test("the cook can double portions, switch units and follow the original method"
       }}
     />,
   );
-  const ingredient = screen.getByRole("checkbox", { name: "250 g rice" });
-  expect(ingredient.props.accessibilityState.checked).toBe(false);
-  await fireEvent.press(ingredient);
-  expect(screen.getByRole("checkbox", { name: "250 g rice" }).props.accessibilityState.checked).toBe(true);
-  await fireEvent.press(screen.getByRole("checkbox", { name: "250 g rice" }));
-  expect(screen.getByRole("checkbox", { name: "250 g rice" }).props.accessibilityState.checked).toBe(false);
   await fireEvent.press(
     screen.getByRole("button", { name: "Increase servings" }),
   );
