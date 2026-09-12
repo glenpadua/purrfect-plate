@@ -1,4 +1,8 @@
 .venv-extraction
+.env*
+**/.env*
+**/node_modules
+.git
 outputs
 .playwright-mcp
 apps/mobile/dist

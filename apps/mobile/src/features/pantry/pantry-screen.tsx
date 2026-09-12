@@ -51,7 +51,10 @@ export function KitchenView({ items, shopping, search, onSearch, loading, hasMor
     try { await action(); } catch (error) { setError(pantryError(error)); }
     finally { busy.current = false; setPending(false); }
   }
-  return <Page>
+  return <Page footer={undo && <View style={{ padding: 12, gap: 8, borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}>
+    <Text accessibilityLiveRegion="polite" style={styles.text}>{undo.message}</Text>
+    <Button secondary title="Undo" disabled={pending} onPress={() => void run(async () => { await undo.action(); setUndo(null); })} />
+  </View>}>
     <Title>Our kitchen</Title>
     <Body muted>What’s at home, and what to pick up. Shared by both of you.</Body>
     <ErrorMessage message={openingError} />
@@ -98,9 +101,5 @@ export function KitchenView({ items, shopping, search, onSearch, loading, hasMor
       </View>
     </View>)}
     <ErrorMessage message={error} />
-    {undo && <View style={styles.section}>
-      <Text accessibilityLiveRegion="polite" style={styles.text}>{undo.message}</Text>
-      <Button secondary title="Undo" disabled={pending} onPress={() => void run(async () => { await undo.action(); setUndo(null); })} />
-    </View>}
   </Page>;
 }

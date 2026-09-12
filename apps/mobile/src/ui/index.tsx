@@ -70,9 +70,11 @@ export const styles = StyleSheet.create({
 export function Page({
   children,
   top = false,
+  footer,
 }: {
   children: ReactNode;
   top?: boolean;
+  footer?: ReactNode;
 }) {
   const { width } = useWindowDimensions();
   return (
@@ -91,6 +93,7 @@ export function Page({
       >
         {children}
       </ScrollView>
+      {footer}
     </SafeAreaView>
   );
 }

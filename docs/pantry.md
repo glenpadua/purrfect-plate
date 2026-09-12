@@ -121,3 +121,8 @@ For this local Clerk setup, run `pnpm dev --hostname localhost --port 3000` and
 open `http://localhost:3000/pantry`. Binding only to `127.0.0.1` caused protected
 route requests to stall during this check. This is a development preview, not a
 production release.
+
+
+## Shared Expo implementation
+
+The Next.js implementation and its original tests are preserved in commit `076f532`; the active product UI is now `apps/mobile/src/features/pantry`. The same screen and recipe controls render on web and native. Regression tests in that folder cover pantry-backed checkboxes, remembered choices, failed writes, portion identity, merge confirmation, Clear/Undo, and selectable copy fallback. The backend and dictionary tests remain intact. The current [verification record](mobile-plan.md) supersedes the older frontend-specific validation above.

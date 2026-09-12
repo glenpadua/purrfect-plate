@@ -36,3 +36,11 @@ Fresh development imports need a reachable authenticated worker. The previously 
 - Home library listing is currently capped at 500 recipes; pantry pagination is independent and is implemented.
 
 [Historical planning and previous verification checkpoints](history/mobile-foundation-2026-09-12.md) are retained for provenance, not current setup instructions.
+
+## Consolidation verification — 12 September 2026
+
+The preserved original pantry commit is `076f532`; the shared UI port and removal are in `af2bd16`, with original task ancestry retained by `b44bba5`. The imported backend, dictionary and their tests match the pantry handoff byte-for-byte. All current product routes resolve through Expo; Next builds only API handlers and its framework-generated error fallback.
+
+Validation: 124 backend/domain tests and 10 shared native component tests passed. Root/mobile TypeScript, Expo web export, iOS bundle export and the Next server build passed. In the in-app browser, the 56-recipe development library loaded; pantry coverage used the new backend; a keyboard checkbox updated pantry; merge preview/cancel, plain-name copying, shopping Clear/Undo and original ordering worked. Egg/flour pantry presence and milk/pepper shopping entries were restored after checks. Desktop at 1280px and phone browser at 390px fit without horizontal overflow. The transient large-eggs test identity remains absent from stock.
+
+Local release routing returned Expo HTML for home, pantry, recipe edit, sign-in and unknown-screen links; missing API/bundle paths stayed 404, and an unauthenticated import-worker request returned 401. The native bundle/component checks do not constitute a new simulator interaction or physical-phone acceptance.
