@@ -37,7 +37,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
-import { CookingPanel } from "@/features/cooking/cooking-panel"
+import { PantryCookingPanel } from "@/features/pantry/pantry-cooking-panel"
+import { RecipeSource } from "@/features/recipe-source/recipe-source"
 import { cn } from "@/lib/utils"
 
 const tagHues = [18, 48, 78, 138, 178, 228, 288, 328]
@@ -256,7 +257,24 @@ export function RecipeDetailScreen({ id }: { id: Id<"recipes"> }) {
 
   return (
     <main className={detailBackground}>
-      <motion.section
+      {recipe.origin === "imported" ? (
+        <header className="mx-auto w-full max-w-5xl px-3 pb-2 pt-4 sm:px-6 sm:pt-6 lg:px-8">
+          <Button asChild variant="ghost" className="mb-6 min-h-11 gap-2 px-0">
+            <Link href="/"><ArrowLeft aria-hidden="true" className="size-4" />Library</Link>
+          </Button>
+          <div className="min-w-0 max-w-3xl space-y-4">
+            {recipe.tags.length ? (
+              <div className="flex flex-wrap gap-2">
+                {recipe.tags.map((tag) => (
+                  <span key={tag} style={tagTone(tag)} className="rounded-sm border px-2 py-1 text-xs font-medium">{tag}</span>
+                ))}
+              </div>
+            ) : null}
+            <h1 className="break-words text-3xl font-semibold leading-tight text-balance sm:text-5xl">{recipe.name}</h1>
+            <p className="text-sm text-muted-foreground">{cookedLine(displayedCookCount, displayedLastCookedAt)}</p>
+          </div>
+        </header>
+      ) : <motion.section
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.38, ease: smoothEase }}
@@ -342,16 +360,16 @@ export function RecipeDetailScreen({ id }: { id: Id<"recipes"> }) {
             </div>
           </div>
         </div>
-      </motion.section>
+      </motion.section>}
 
-      <div className="mx-auto grid w-full max-w-5xl gap-5 px-3 pb-28 pt-5 sm:grid-cols-[1fr_auto] sm:px-6 sm:pb-12 sm:pt-7 lg:px-8">
+      <div className="mx-auto grid min-w-0 w-full max-w-5xl gap-5 px-3 pb-28 pt-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:px-6 sm:pb-12 sm:pt-7 lg:px-8">
         <motion.section
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.12, duration: 0.38, ease: smoothEase }}
-          className="space-y-4"
+          className="min-w-0 space-y-4"
         >
-          <div className="grid grid-cols-2 gap-2 sm:max-w-md">
+          {recipe.origin !== "imported" ? <div className="grid grid-cols-2 gap-2 sm:max-w-md">
             <div className="rounded-lg border bg-background/85 p-3 shadow-sm backdrop-blur dark:bg-card/75">
               <p className="text-2xl font-semibold leading-none">
                 {displayedCookCount || "0"}
@@ -366,11 +384,13 @@ export function RecipeDetailScreen({ id }: { id: Id<"recipes"> }) {
               </p>
               <p className="mt-1 text-xs text-muted-foreground">last cooked</p>
             </div>
-          </div>
+          </div> : null}
 
-          {recipe.origin === "imported" && recipe.sourceUrl ? <div className="rounded-lg border bg-card p-4 text-sm"><span className="text-muted-foreground">Imported from {recipe.sourcePlatform}{recipe.sourceAuthor ? ` · ${recipe.sourceAuthor}` : ""}</span><a href={recipe.sourceUrl} target="_blank" rel="noopener noreferrer" className="ml-3 text-primary underline underline-offset-4">Original recipe ↗</a></div> : null}
+          {recipe.origin === "imported" && recipe.sourceUrl ? (
+            <RecipeSource sourceUrl={recipe.sourceUrl} sourceAuthor={recipe.sourceAuthor} recipeName={recipe.name} />
+          ) : null}
           {recipe.servings ? <p className="text-sm text-muted-foreground">Servings: {recipe.servings}</p> : null}
-          {recipe.ingredients?.length || recipe.instructions?.length || recipe.recipeNotes?.length ? <CookingPanel key={recipe._id} ingredients={recipe.ingredients} instructions={recipe.instructions} recipeNotes={recipe.recipeNotes} servings={recipe.servings} /> : null}
+          {recipe.ingredients?.length || recipe.instructions?.length || recipe.recipeNotes?.length ? <PantryCookingPanel key={recipe._id} ingredients={recipe.ingredients} instructions={recipe.instructions} recipeNotes={recipe.recipeNotes} servings={recipe.servings} /> : null}
           {recipe.importWarnings?.length ? <section className="rounded-lg border border-amber-500/30 bg-card p-5"><h2 className="mb-3 text-xl">Things to check</h2><ul className="list-disc space-y-2 pl-5 text-sm leading-6">{recipe.importWarnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></section> : null}
           {recipe.note ? (
             <div className="rounded-lg border bg-background/85 p-4 shadow-sm backdrop-blur dark:bg-card/75">

@@ -8,6 +8,10 @@ export default defineSchema({
   memberships: defineTable({ libraryId: v.id("libraries"), userId: v.string(), email: v.string(), role: v.union(v.literal("owner"), v.literal("member")), createdAt: v.number() })
     .index("by_user", ["userId"]).index("by_library_user", ["libraryId", "userId"]),
   libraryInvites: defineTable({ libraryId: v.id("libraries"), email: v.string(), role: v.union(v.literal("owner"), v.literal("member")) }).index("by_email", ["email"]),
+  pantryItems: defineTable({ libraryId: v.id("libraries"), key: v.string(), name: v.string(), present: v.boolean(), updatedAt: v.number() })
+    .index("by_library_key", ["libraryId", "key"]),
+  shoppingItems: defineTable({ libraryId: v.id("libraries"), key: v.string(), name: v.string(), createdAt: v.number() })
+    .index("by_library_key", ["libraryId", "key"]),
   recipes: defineTable({ ...recipeContent, ...recipeMetadata })
     .index("by_created_at", ["createdAt"]).index("by_updated_at", ["updatedAt"])
     .index("by_library_created", ["libraryId", "createdAt"])

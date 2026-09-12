@@ -112,10 +112,34 @@ export async function importRecipe(url: string, progress: (phase: string) => Pro
   }
 
   const searchQuery = preflight.dish ? `${preflight.dish} recipe` : undefined
-  if (!evidence.some(item => item.kind !== "visual_observation" && item.text.trim())) throw new ImportSourceError("We could not recover readable ingredients or instructions. The source may be inaccessible, or it may contain only visuals. You can open it, add the recipe manually, or look for a different recipe.", mediaUnavailable ? "unavailable" : "insufficient", searchQuery)
+  // Failed imports still consumed retrieval/model work. Retain the provenance
+  // without copying raw media payloads or exceeding the worker's storage limit.
+  const failureAudit = (result?: Awaited<ReturnType<typeof normalizeRecipe>>) => {
+    const retained: Evidence[] = []
+    let size = 0
+    let evidenceTruncated = false
+    for (const item of evidence) {
+      const bounded = { id: item.id.slice(0, 120), kind: item.kind, text: item.text.slice(0, 12000), via: item.via.slice(0, 500) }
+      const itemSize = JSON.stringify(bounded).length
+      if (size + itemSize > 60000) { evidenceTruncated = true; break }
+      retained.push(bounded)
+      size += itemSize
+      if (bounded.text !== item.text) evidenceTruncated = true
+    }
+    const citationsTruncated = !!result && JSON.stringify(result.citations).length > 100000
+    return {
+      version: 1, url: url.slice(0, 2048), finalUrl: finalUrl.slice(0, 2048), platform, sourceTitle: sourceTitle.slice(0, 1000), extractedAt: new Date().toISOString(),
+      evidence: retained, evidenceTruncated,
+      mediaUsage: mediaUsage ? { ...mediaUsage, model: mediaUsage.model.slice(0, 200) } : undefined,
+      usage: result ? { ...result.usage, model: result.usage.model.slice(0, 200) } : undefined,
+      citations: result && !citationsTruncated ? result.citations : undefined, citationsTruncated,
+      preflight, warnings: [...new Set([...(result?.draft.warnings ?? []), ...warnings])].slice(0, 20).map(warning => warning.slice(0, 500)),
+    }
+  }
+  if (!evidence.some(item => item.kind !== "visual_observation" && item.text.trim())) throw new ImportSourceError("We could not recover readable ingredients or instructions. The source may be inaccessible, or it may contain only visuals. You can open it, add the recipe manually, or look for a different recipe.", mediaUnavailable ? "unavailable" : "insufficient", searchQuery, failureAudit())
   await progress("Putting the recipe into clear ingredients and steps")
   const result = await normalizeRecipe(evidence, budget(90000, 15000))
-  if (!result.draft.ingredients.length && !result.draft.instructions.length) throw new ImportSourceError("We read this source, but it did not provide usable ingredients or cooking instructions. Try the creator’s recipe page, add details manually, or find a different recipe.", mediaUnavailable ? "unavailable" : "insufficient", searchQuery)
+  if (!result.draft.ingredients.length && !result.draft.instructions.length) throw new ImportSourceError("We read this source, but it did not provide usable ingredients or cooking instructions. Try the creator’s recipe page, add details manually, or find a different recipe.", mediaUnavailable ? "unavailable" : "insufficient", searchQuery, failureAudit(result))
   if (sourceImageUrl && budget(15000) >= 15000) {
     try { image = await retrieveRecipeImage(sourceImageUrl, AbortSignal.timeout(budget(15000))) } catch { warnings.push("The source cover was unavailable; a video frame or placeholder is used.") }
   }

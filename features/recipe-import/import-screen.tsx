@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useMutation, useQuery } from "convex/react"
+import { ConvexError } from "convex/values"
 import { ArrowLeft, ArrowUpRight, Cat, Check, Link2, Loader2 } from "lucide-react"
 import { useState, type FormEvent } from "react"
 import { toast } from "sonner"
@@ -16,7 +17,15 @@ import { RecipePlaceholder } from "@/components/recipe-placeholder"
 import { recipeLinesFromText, recipeLinesToText } from "@/lib/recipe-lines"
 
 type Import = NonNullable<typeof api.imports.get._returnType>
+function importError(error: unknown, fallback: string) {
+  return error instanceof ConvexError && typeof error.data === "string" ? error.data : fallback
+}
 const labels = { queued: "Waiting", processing: "Reading recipe", needs_review: "Ready to review", failed: "Needs another try", saved: "Saved" }
+function importLabel(job: Pick<Import, "status" | "failureCode">) {
+  if (job.status === "failed" && job.failureCode === "insufficient") return "Not enough details"
+  if (job.status === "failed" && job.failureCode === "not_recipe") return "Not a recipe"
+  return labels[job.status]
+}
 
 export function ImportScreen() {
   const params = useSearchParams()
@@ -32,7 +41,7 @@ export function ImportScreen() {
   async function submit(event: FormEvent) {
     event.preventDefault(); setBusy(true); setError("")
     try { const jobId = await start({ url: url.trim() }); router.push(`/import?job=${jobId}`) }
-    catch (e) { setError(e instanceof Error ? e.message.replace(/^.*ConvexError:\s*/, "") : "Could not start this import.") }
+    catch (e) { setError(importError(e, "Could not start this import. Please try again.")) }
     finally { setBusy(false) }
   }
   return <main className="min-h-screen bg-[linear-gradient(180deg,oklch(0.98_0.025_75),var(--background)_60%)] px-4 pb-20 pt-6 dark:bg-none sm:px-6">
@@ -42,7 +51,7 @@ export function ImportScreen() {
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,340px)_1fr]">
         <aside className="space-y-6">
           <form onSubmit={submit} className="rounded-2xl border bg-card p-5 shadow-sm"><label htmlFor="import-url" className="mb-2 block text-sm font-medium">Recipe link</label><Input id="import-url" type="url" required maxLength={2048} value={url} onChange={e => setUrl(e.target.value)} placeholder="https://…" autoComplete="off" /><Button type="submit" disabled={busy} className="mt-3 w-full">{busy ? <Loader2 className="size-4 animate-spin" /> : <Link2 className="size-4" />}Import recipe</Button><p className="mt-3 text-xs leading-5 text-muted-foreground">Instagram · TikTok · YouTube · recipe websites<br />Public links work best. Videos up to 10 minutes.</p>{error ? <p role="alert" className="mt-3 text-sm text-destructive">{error}</p> : null}</form>
-          <div><h2 className="mb-3 text-sm font-semibold">Recent imports</h2>{jobs?.length ? <div className="space-y-2">{jobs.map(j => <Link key={j.id} href={`/import?job=${j.id}`} className={`block rounded-xl border p-3 transition-colors ${id === j.id ? "border-primary/50 bg-primary/5" : "bg-card hover:bg-accent"}`}><p className="truncate text-sm font-medium">{j.name || new URL(j.url).hostname.replace("www.", "")}</p><p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">{j.status === "processing" || j.status === "queued" ? <Loader2 className="size-3 animate-spin" /> : j.status === "saved" ? <Check className="size-3" /> : null}{labels[j.status]}</p></Link>)}</div> : <p className="text-sm text-muted-foreground">Your saved links will appear here.</p>}</div>
+          <div><h2 className="mb-3 text-sm font-semibold">Recent imports</h2>{jobs?.length ? <div className="space-y-2">{jobs.map(j => <Link key={j.id} href={`/import?job=${j.id}`} className={`block rounded-xl border p-3 transition-colors ${id === j.id ? "border-primary/50 bg-primary/5" : "bg-card hover:bg-accent"}`}><p className="truncate text-sm font-medium">{j.name || new URL(j.url).hostname.replace("www.", "")}</p><p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">{j.status === "processing" || j.status === "queued" ? <Loader2 className="size-3 animate-spin" /> : j.status === "saved" ? <Check className="size-3" /> : null}{importLabel(j)}</p></Link>)}</div> : <p className="text-sm text-muted-foreground">Your saved links will appear here.</p>}</div>
         </aside>
         <section aria-live="polite">
           {!id ? <div className="rounded-2xl border border-dashed px-6 py-16 text-center"><Cat className="mx-auto mb-4 size-16 stroke-[1.3] text-primary" /><h2 className="text-2xl">A little help from the kitchen cat.</h2><p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-muted-foreground">Your original source stays attached to the recipe. If something’s missing, we’ll tell you.</p></div> : job === undefined ? <p className="p-8 text-sm text-muted-foreground">Loading your import…</p> : job === null ? <p className="p-8">This import is unavailable.</p> : job.status === "processing" || job.status === "queued" ? <div className="rounded-2xl border bg-card p-10 text-center"><Cat className="mx-auto mb-5 size-16 text-primary" /><h2 className="text-2xl">Gathering the good bits…</h2><p className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" />{job.phase}</p><p className="mt-5 text-xs text-muted-foreground">You can leave this page. Your import will keep going.</p></div> : job.status === "failed" ? <FailedImport key={job.id} job={job} retry={retry} /> : job.status === "saved" && job.recipeId ? <div className="rounded-2xl border bg-card p-8 text-center"><Check className="mx-auto mb-4 size-10 text-primary" /><h2 className="text-2xl">Home in your library.</h2><p className="my-4 text-muted-foreground">{job.name}</p><Button asChild><Link href={`/recipe/${job.recipeId}`}>Open recipe</Link></Button></div> : job.draft ? <ReviewDraft key={job.id} job={job} /> : null}
@@ -66,7 +75,7 @@ function ReviewDraft({ job }: { job: Import }) {
   async function submit(event: FormEvent) {
     event.preventDefault(); setSaving(true)
     try { const recipeId = await save({ id: job.id, draft: { ...draft, name, ingredients: recipeLinesFromText(ingredients, draft.ingredients), instructions: recipeLinesFromText(instructions, draft.instructions), recipeNotes: recipeLinesFromText(recipeNotes, draft.recipeNotes), servings: servings.trim() || undefined, tags: tags.split(",").map(t => t.trim()).filter(Boolean) } }); toast.success("Recipe saved to your shared library"); router.push(`/recipe/${recipeId}`) }
-    catch (e) { toast.error(e instanceof Error ? e.message : "Could not save this recipe.") }
+    catch (e) { toast.error(importError(e, "Could not save this recipe.")) }
     finally { setSaving(false) }
   }
   return <form onSubmit={submit} className="overflow-hidden rounded-2xl border bg-card shadow-sm">
@@ -93,5 +102,5 @@ function AlternativeRecipeSearch({ initialQuery = "" }: { initialQuery?: string 
 
 function FailedImport({ job, retry }: { job: Import; retry: (args: { id: Id<"imports">; continueAnyway?: boolean }) => Promise<unknown> }) {
   const [busy, setBusy] = useState(false)
-  return <div className="space-y-4 rounded-2xl border bg-card p-6"><h2 className="text-2xl">{job.failureCode === "not_recipe" ? "This looks unrelated to cooking" : job.failureCode === "insufficient" ? "Not enough recipe details" : "We couldn’t finish this import"}</h2><p className="text-sm leading-6 text-muted-foreground">{job.error}</p><div className="flex gap-3"><Button disabled={busy} onClick={async () => { setBusy(true); try { await retry({ id: job.id, ...(job.failureCode === "not_recipe" ? { continueAnyway: true } : {}) }) } catch (e) { toast.error(e instanceof Error ? e.message : "Could not retry.") } finally { setBusy(false) } }}>{busy ? "Checking…" : job.failureCode === "not_recipe" ? "It’s a recipe — extract anyway" : "Check again"}</Button><Button asChild variant="outline"><a href={job.url} target="_blank" rel="noopener noreferrer">Open source<ArrowUpRight className="size-4" /></a></Button></div>{job.failureCode === "insufficient" ? <AlternativeRecipeSearch initialQuery={job.searchQuery} /> : null}</div>
+  return <div className="space-y-4 rounded-2xl border bg-card p-6"><h2 className="text-2xl">{job.failureCode === "not_recipe" ? "This looks unrelated to cooking" : job.failureCode === "insufficient" ? "Not enough recipe details" : "We couldn’t finish this import"}</h2><p className="text-sm leading-6 text-muted-foreground">{job.error}</p><div className="flex gap-3"><Button disabled={busy} onClick={async () => { setBusy(true); try { await retry({ id: job.id, ...(job.failureCode === "not_recipe" ? { continueAnyway: true } : {}) }) } catch (e) { toast.error(importError(e, "Could not retry. Please try again.")) } finally { setBusy(false) } }}>{busy ? "Checking…" : job.failureCode === "not_recipe" ? "It’s a recipe — extract anyway" : "Check again"}</Button><Button asChild variant="outline"><a href={job.url} target="_blank" rel="noopener noreferrer">Open source<ArrowUpRight className="size-4" /></a></Button></div>{job.failureCode === "insufficient" ? <AlternativeRecipeSearch initialQuery={job.searchQuery} /> : null}</div>
 }

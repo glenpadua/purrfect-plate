@@ -3,6 +3,13 @@ import { afterEach, expect, test } from "vitest"
 import { CookingPanel } from "./cooking-panel"
 afterEach(cleanup)
 
+test("keeps pantry actions available beside original ingredients when portions change", () => {
+  render(<CookingPanel servings="2" ingredients={[{ text: "100 g flour" }]} renderIngredientAccessory={ingredient => <button>Check pantry for {ingredient.text}</button>} />)
+  fireEvent.change(screen.getByLabelText("Cook for"), { target: { value: "4" } })
+  expect(screen.getByText("200 g flour")).toBeInTheDocument()
+  expect(screen.getByRole("button", { name: "Check pantry for 100 g flour" })).toBeInTheDocument()
+})
+
 test("remains usable when the other member removes the active step", () => {
   const { rerender } = render(<CookingPanel instructions={[{ text: "Mix." }, { text: "Rest." }]} />)
   fireEvent.click(screen.getByRole("button", { name: "Start cook mode" }))

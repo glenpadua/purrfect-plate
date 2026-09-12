@@ -1,6 +1,12 @@
 # YouTube retrieval: decision and evidence
 
-Last checked: 2026-09-12. **Gemini has successfully read all three supplied public YouTube videos.** The bounded Python production adapter is implemented; deployment and full hosted import acceptance remain separate gates. A successful HTTP response or a video title does not prove we extracted the recipe.
+Last checked: 2026-09-12. **Gemini has successfully read all three supplied public YouTube videos.** The bounded adapter is deployed. The hosted app imported and saved the two spoken samples; silent biryani returned insufficient evidence with alternative search. A successful HTTP response or a video title alone does not prove we extracted the recipe.
+
+## Latest hosted acceptance
+
+CrunchWrap produced ten ingredient lines and eight steps, saved as `js7br0ycrz5cndmfvz75375hkn8e8ayy`. Gemini recorded 5,930 input / 1,596 output tokens and 12.4 seconds for video analysis. The wrapping tutorial produced two generic ingredient lines and six steps, saved as **How to wrap a burrito** (`js700gnh5j86y8zyb126a4fwfh8e9rca`); Gemini recorded 2,839 / 724 tokens and 7.4 seconds. Both kept source attribution and missing-detail warnings. Provider durations exclude retrieval, normalization and user review.
+
+Silent biryani stopped with insufficient evidence and a suggested **Hyderabadi Chicken Dum Biryani recipe** search. Its initial failed job predates failure-audit retention; newer code preserves bounded evidence and usage for insufficient outcomes, covered at the extraction test interface. Historical records are not retroactively filled. The failed proof-of-origin diagnostics have been removed and deployed. Both Vercel Git builds pass.
 
 ## Selected approach
 

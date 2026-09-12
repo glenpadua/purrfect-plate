@@ -14,6 +14,7 @@ import type * as imports from "../imports.js";
 import type * as libraries from "../libraries.js";
 import type * as migrations from "../migrations.js";
 import type * as model from "../model.js";
+import type * as pantry from "../pantry.js";
 import type * as recipes from "../recipes.js";
 import type * as tagMaintenance from "../tagMaintenance.js";
 
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   libraries: typeof libraries;
   migrations: typeof migrations;
   model: typeof model;
+  pantry: typeof pantry;
   recipes: typeof recipes;
   tagMaintenance: typeof tagMaintenance;
 }>;

@@ -1,6 +1,6 @@
 # Purrfect Plate
 
-A shared cat-themed recipe library for Glen and Millusha. Add manual recipes/photos, import public links, review ingredients and instructions, adjust portions, switch units, use step-by-step cook mode, and track favourites and dishes cooked.
+A shared cat-themed recipe library for Glen and Millusha. Import public links, review recipes, play supported sources inline, adjust portions and units, use cook mode, and keep a simple shared pantry and shopping list.
 
 ## Stack
 
@@ -51,6 +51,8 @@ The local extraction bench remains at /extraction-prototype; its API is disabled
 - [Architecture and operations](docs/architecture.md): module ownership, authentication, jobs, image lifecycle and known limits.
 - [Import guardrails](docs/import-guardrails.md): cheap relevance checks, limits and honest alternatives.
 - [Cooking behavior](docs/cooking.md): supported amounts, unit conventions and test seams.
+- [Pantry and shopping](docs/pantry.md): binary presence, conservative ingredient matching and future reviewed photo/voice updates.
+- [Inline sources](docs/source-embeds.md): supported players, mobile layout and platform limitations.
 - [Production acceptance](docs/production-plan.md): verified behavior versus remaining checks.
 - [YouTube investigation](docs/youtube-retrieval.md): evidence and the current fallback experiment.
 - [Mobile plan](docs/mobile-plan.md): Expo, Clerk/Convex reuse, Mac setup and installation on both iPhones.

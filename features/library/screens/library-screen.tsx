@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Camera, Cat, Check, Plus, Search, Shuffle, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -12,6 +13,9 @@ import { tagTone } from "../lib/tag-tone"
 import { RecipeCard } from "../components/recipe-card"
 import { SurpriseMeModal } from "../components/surprise-me-modal"
 import { bottomPeekCatSrc, ModalMascot, PeekCat } from "../components/library-mascots"
+import { api } from "@/convex/_generated/api"
+import { useQuery } from "@/lib/recipe-client"
+import { recipePantryCoverage } from "@/lib/pantry"
 
 export function LibraryScreen() {
   const router = useRouter()
@@ -21,6 +25,10 @@ export function LibraryScreen() {
     surpriseTags, setSurpriseTags, recipes, allTags, favoriteCount,
     hasActiveFilters, toggleTag, toggleFavorite, openSurprise, clearFilters,
   } = useLibrary()
+  const [usePantry, setUsePantry] = useState(false)
+  const pantryState = useQuery(api.pantry.list, {})
+  const rankedRecipes = recipes?.map((recipe, index) => ({ recipe, index, coverage: recipePantryCoverage(recipe.ingredients ?? [], pantryState?.pantry ?? []) }))
+  if (usePantry && pantryState) rankedRecipes?.sort((a, b) => (b.coverage.present / (b.coverage.total || 1)) - (a.coverage.present / (a.coverage.total || 1)) || a.index - b.index)
 
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,oklch(0.99_0.012_78),oklch(0.97_0.02_48)_42%,var(--background))] text-foreground dark:bg-[linear-gradient(180deg,oklch(0.2_0.018_42),oklch(0.16_0.014_46)_42%,var(--background))]">
@@ -46,6 +54,7 @@ export function LibraryScreen() {
               <Link href="/import" className="mt-3 inline-block text-sm text-primary underline underline-offset-4">
                 Import a recipe from a link ↗
               </Link>
+              <Link href="/pantry" className="ml-4 mt-3 inline-block text-sm text-primary underline underline-offset-4">Pantry & shopping list ↗</Link>
             </div>
 
             <div className="grid grid-cols-2 gap-2 rounded-lg border bg-background/80 p-2 shadow-sm backdrop-blur dark:border-border/80 dark:bg-card/85 sm:w-72">
@@ -134,6 +143,10 @@ export function LibraryScreen() {
               </button>
             ) : null}
           </div>
+          <div className="mt-3 space-y-1 border-t pt-3">
+            <label className="flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" checked={usePantry} disabled={!pantryState} onChange={event => setUsePantry(event.target.checked)} className="size-4 accent-primary" />Use my pantry</label>
+            {usePantry ? <p className="text-xs leading-5 text-muted-foreground">Most pantry matches first. Check amounts and anything unconfirmed before cooking.</p> : null}
+          </div>
         </section>
 
         {recipes === undefined ? (
@@ -143,9 +156,9 @@ export function LibraryScreen() {
             className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4"
             aria-label="Recipe library"
           >
-            {recipes.map((recipe, index) => (
+            {rankedRecipes?.map(({ recipe, coverage }, index) => (
+              <div key={recipe._id} className="min-w-0">
               <RecipeCard
-                key={recipe._id}
                 recipe={recipe}
                 index={index}
                 isRevealed={revealedRecipeId === recipe._id}
@@ -158,6 +171,8 @@ export function LibraryScreen() {
                 }
                 onFavorite={() => toggleFavorite(recipe)}
               />
+              {usePantry && pantryState ? <p className="px-1 pt-2 text-xs text-muted-foreground">{coverage.total ? `${coverage.present}/${coverage.total} pantry matches` : "No ingredient list to match"}</p> : null}
+              </div>
             ))}
           </section>
         ) : (
