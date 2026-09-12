@@ -16,7 +16,7 @@ export function useLibrary() {
   const [isSurpriseOpen, setIsSurpriseOpen] = useState(false)
   const [surpriseTags, setSurpriseTags] = useState<string[]>([])
 
-  const { recipes, allTags, updateRecipe } = useLibraryData({
+  const { recipes, allTags, updateRecipe, removeRecipe } = useLibraryData({
     search,
     tags: selectedTags,
   })
@@ -68,6 +68,6 @@ export function useLibrary() {
     search, setSearch, selectedTags, revealedRecipeId, setRevealedRecipeId,
     favoriteInFlight, favoriteCelebrationId, isSurpriseOpen, setIsSurpriseOpen,
     surpriseTags, setSurpriseTags, recipes, allTags, favoriteCount,
-    hasActiveFilters, toggleTag, toggleFavorite, openSurprise, clearFilters,
+    hasActiveFilters, toggleTag, toggleFavorite, openSurprise, clearFilters, removeRecipe,
   }
 }

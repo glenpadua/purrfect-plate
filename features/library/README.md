@@ -3,6 +3,11 @@
 `app/page.tsx` composes `LibraryScreen`. The feature owns browsing, filters,
 favorites, recipe cards, and the existing surprise-picker interaction.
 
+Each card exposes deletion through an accessible confirmation. The delete control
+waits for the authenticated `recipes.remove` mutation, blocks repeat submissions,
+and keeps failures visible for retry. The reactive library query removes the card
+after success; cancelling leaves the recipe unchanged.
+
 - `screens/library-screen.tsx` composes the page and its loading/empty states.
 - `hooks/use-library.ts` owns filter state, favorite updates, and opening the picker.
 - `data/use-library-data.ts` is the only Convex binding boundary in this feature.

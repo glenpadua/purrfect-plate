@@ -6,6 +6,7 @@ import { Camera, Heart, Loader2, PawPrint, Tags } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Recipe } from "../data/use-library-data"
 import { tagTone } from "../lib/tag-tone"
+import { DeleteRecipeButton } from "./delete-recipe-button"
 
 export function RecipeCard({
   recipe,
@@ -15,6 +16,7 @@ export function RecipeCard({
   isFavoriteCelebrating,
   onReveal,
   onFavorite,
+  onDelete,
 }: {
   recipe: Recipe
   index: number
@@ -23,6 +25,7 @@ export function RecipeCard({
   isFavoriteCelebrating: boolean
   onReveal: () => void
   onFavorite: () => void
+  onDelete: () => Promise<unknown>
 }) {
   const shouldReduceMotion = useReducedMotion()
 
@@ -92,6 +95,9 @@ export function RecipeCard({
         </div>
       </div>
 
+      <div className="absolute left-2 top-2">
+        <DeleteRecipeButton recipeName={recipe.name} onDelete={onDelete} />
+      </div>
       <div className="absolute right-2 top-2 flex gap-1.5">
         <button
           type="button"

@@ -23,7 +23,7 @@ export function LibraryScreen() {
     search, setSearch, selectedTags, revealedRecipeId, setRevealedRecipeId,
     favoriteInFlight, favoriteCelebrationId, isSurpriseOpen, setIsSurpriseOpen,
     surpriseTags, setSurpriseTags, recipes, allTags, favoriteCount,
-    hasActiveFilters, toggleTag, toggleFavorite, openSurprise, clearFilters,
+    hasActiveFilters, toggleTag, toggleFavorite, openSurprise, clearFilters, removeRecipe,
   } = useLibrary()
   const [usePantry, setUsePantry] = useState(false)
   const pantryState = useQuery(api.pantry.list, {})
@@ -170,6 +170,7 @@ export function LibraryScreen() {
                   )
                 }
                 onFavorite={() => toggleFavorite(recipe)}
+                onDelete={() => removeRecipe({ id: recipe._id })}
               />
               {usePantry && pantryState ? <p className="px-1 pt-2 text-xs text-muted-foreground">{coverage.total ? `${coverage.present}/${coverage.total} pantry matches` : "No ingredient list to match"}</p> : null}
               </div>
