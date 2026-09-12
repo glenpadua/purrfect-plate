@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Camera, Cat, Check, Plus, Search, Shuffle, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -13,9 +13,8 @@ import { tagTone } from "../lib/tag-tone"
 import { RecipeCard } from "../components/recipe-card"
 import { SurpriseMeModal } from "../components/surprise-me-modal"
 import { bottomPeekCatSrc, ModalMascot, PeekCat } from "../components/library-mascots"
-import { api } from "@/convex/_generated/api"
-import { useQuery } from "@/lib/recipe-client"
-import { recipePantryCoverage } from "@/lib/pantry"
+import { RecipeCoverage, type Coverage } from "@/features/pantry/recipe-coverage"
+import { usePantryReady } from "@/features/pantry/use-pantry-ready"
 
 export function LibraryScreen() {
   const router = useRouter()
@@ -26,12 +25,17 @@ export function LibraryScreen() {
     hasActiveFilters, toggleTag, toggleFavorite, openSurprise, clearFilters, removeRecipe,
   } = useLibrary()
   const [usePantry, setUsePantry] = useState(false)
-  const pantryState = useQuery(api.pantry.list, {})
-  const rankedRecipes = recipes?.map((recipe, index) => ({ recipe, index, coverage: recipePantryCoverage(recipe.ingredients ?? [], pantryState?.pantry ?? []) }))
-  if (usePantry && pantryState) rankedRecipes?.sort((a, b) => (b.coverage.present / (b.coverage.total || 1)) - (a.coverage.present / (a.coverage.total || 1)) || a.index - b.index)
+  const { ready: pantryReady } = usePantryReady()
+  const [coverageById, setCoverage] = useState<Record<string, Coverage>>({})
+  const updateCoverage = useCallback((items: Coverage[]) => setCoverage(current => ({ ...current, ...Object.fromEntries(items.map(item => [item.recipeId, item])) })), [])
+  const recipeBatches = Array.from({ length: Math.ceil((recipes?.length ?? 0) / 20) }, (_, index) => recipes!.slice(index * 20, index * 20 + 20).map(recipe => recipe._id))
+  const rankedRecipes = recipes?.map((recipe, index) => ({ recipe, index, coverage: coverageById[recipe._id] }))
+  const coverageReady = pantryReady && rankedRecipes?.every(item => item.coverage)
+  if (usePantry && coverageReady) rankedRecipes?.sort((a, b) => (b.coverage!.present / (b.coverage!.total || 1)) - (a.coverage!.present / (a.coverage!.total || 1)) || a.index - b.index)
 
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,oklch(0.99_0.012_78),oklch(0.97_0.02_48)_42%,var(--background))] text-foreground dark:bg-[linear-gradient(180deg,oklch(0.2_0.018_42),oklch(0.16_0.014_46)_42%,var(--background))]">
+      {usePantry && pantryReady ? recipeBatches.map((ids, index) => <RecipeCoverage key={index} recipeIds={ids} onUpdate={updateCoverage} />) : null}
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-3 pb-28 pt-4 sm:px-6 lg:px-8">
         <header className="flex flex-col gap-5 pt-3 sm:pt-8">
           <div className="flex items-center gap-3 pr-14">
@@ -144,7 +148,7 @@ export function LibraryScreen() {
             ) : null}
           </div>
           <div className="mt-3 space-y-1 border-t pt-3">
-            <label className="flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" checked={usePantry} disabled={!pantryState} onChange={event => setUsePantry(event.target.checked)} className="size-4 accent-primary" />Use my pantry</label>
+            <label className="flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" checked={usePantry} disabled={!pantryReady} onChange={event => setUsePantry(event.target.checked)} className="size-4 accent-primary" />Use my pantry</label>
             {usePantry ? <p className="text-xs leading-5 text-muted-foreground">Most pantry matches first. Check amounts and anything unconfirmed before cooking.</p> : null}
           </div>
         </section>
@@ -172,7 +176,7 @@ export function LibraryScreen() {
                 onFavorite={() => toggleFavorite(recipe)}
                 onDelete={() => removeRecipe({ id: recipe._id })}
               />
-              {usePantry && pantryState ? <p className="px-1 pt-2 text-xs text-muted-foreground">{coverage.total ? `${coverage.present}/${coverage.total} pantry matches` : "No ingredient list to match"}</p> : null}
+              {usePantry ? <p className="px-1 pt-2 text-xs text-muted-foreground">{coverage ? coverage.total ? `${coverage.present}/${coverage.total} pantry matches` : "No ingredient list to match" : "Checking pantry…"}</p> : null}
               </div>
             ))}
           </section>

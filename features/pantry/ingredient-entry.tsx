@@ -1,42 +1,40 @@
 "use client"
 
-import { useId, useState } from "react"
+import { useId, useRef, useState } from "react"
+import { Plus } from "lucide-react"
+import { ConvexError } from "convex/values"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ingredientIdentity } from "@/lib/pantry"
+import { ingredientSuggestions } from "@/lib/pantry"
 
-export function IngredientEntry({ onHave, onNeed, label = "Ingredient to track" }: {
-  onHave: (name: string) => Promise<unknown>
-  onNeed: (name: string) => Promise<unknown>
-  label?: string
+export function pantryError(error: unknown) {
+  return error instanceof ConvexError && typeof error.data === "string" ? error.data : "That change didn’t save. Please try again."
+}
+
+export function IngredientEntry({ onAdd, label, knownNames = [], disabled = false }: {
+  onAdd: (name: string) => Promise<unknown>; label: string; knownNames?: string[]; disabled?: boolean
 }) {
   const id = useId()
+  const input = useRef<HTMLInputElement>(null)
   const [name, setName] = useState("")
   const [pending, setPending] = useState(false)
   const [error, setError] = useState("")
   const [saved, setSaved] = useState("")
-  async function save(present: boolean) {
-    if (pending) return
-    const item = ingredientIdentity(name)
-    if (!item) { setError("Enter one ingredient name, such as onion or olive oil."); return }
-    setPending(true)
-    setError("")
-    setSaved("")
-    try {
-      await (present ? onHave(item.name) : onNeed(item.name))
-      setSaved(`${item.name} ${present ? "saved to pantry" : "added to shopping list"}.`)
-      setName("")
-    } catch { setError("Could not save this ingredient. Try again.") }
+  async function save() {
+    if (pending || disabled || !name.trim()) return
+    setPending(true); setError(""); setSaved("")
+    try { await onAdd(name.trim()); setSaved(`${name.trim()} added.`); setName(""); requestAnimationFrame(() => input.current?.focus()) }
+    catch (error) { setError(pantryError(error)) }
     finally { setPending(false) }
   }
-  return <form className="space-y-2" onSubmit={event => { event.preventDefault(); void save(true) }}>
-    <label htmlFor={id} className="text-sm font-medium">{label}</label>
-    <Input id={id} placeholder="e.g. onion" value={name} maxLength={120} disabled={pending} onChange={event => { setName(event.target.value); setSaved(""); setError("") }} className="h-11 text-base" />
-    <div className="flex flex-wrap gap-2">
-      <Button type="submit" variant="outline" className="min-h-10" disabled={pending || !name.trim()}>Have it</Button>
-      <Button type="button" className="min-h-10" disabled={pending || !name.trim()} onClick={() => void save(false)}>Add to shopping</Button>
+  return <form onSubmit={event => { event.preventDefault(); void save() }} className="space-y-2">
+    <label htmlFor={id} className="sr-only">{label}</label>
+    <div className="flex gap-2">
+      <Input ref={input} id={id} list={`${id}-names`} placeholder={label} value={name} maxLength={label === "Add to shopping list" ? 3000 : 120} disabled={pending || disabled} onChange={event => { setName(event.target.value); setError(""); setSaved("") }} className="h-12 min-w-0 bg-background text-base md:text-base" />
+      <Button type="submit" className="h-12 shrink-0 px-4" disabled={pending || disabled || !name.trim()} aria-label={label}><Plus className="size-4" /><span>Add</span></Button>
     </div>
-    {error ? <p role="alert" className="text-xs text-destructive">{error}</p> : null}
+    <datalist id={`${id}-names`}>{[...new Set([...knownNames, ...ingredientSuggestions])].map(name => <option key={name} value={name} />)}</datalist>
+    {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
     {saved ? <p role="status" className="text-xs text-muted-foreground">{saved}</p> : null}
   </form>
 }

@@ -6,8 +6,10 @@ import { ingredientForCooking, servingCount, type CookingUnits } from "@/lib/coo
 import type { RecipeLine } from "@/lib/recipe-lines"
 
 /** A view of a recipe for this cooking session; adjustments never save over it. */
-export function CookingPanel({ ingredients = [], instructions = [], recipeNotes = [], servings, renderIngredientAccessory }: {
+export function CookingPanel({ ingredients = [], instructions = [], recipeNotes = [], servings, renderIngredientAccessory, renderIngredientControl, ingredientsIntro, ingredientsFooter }: {
   ingredients?: RecipeLine[]; instructions?: RecipeLine[]; recipeNotes?: RecipeLine[]; servings?: string
+  ingredientsIntro?: ReactNode; ingredientsFooter?: ReactNode
+  renderIngredientControl?: (ingredient: RecipeLine, index: number, content: ReactNode) => ReactNode
   renderIngredientAccessory?: (ingredient: RecipeLine, index: number) => ReactNode
 }) {
   const base = servingCount(servings)
@@ -45,10 +47,10 @@ export function CookingPanel({ ingredients = [], instructions = [], recipeNotes 
       <p className="my-6 break-words whitespace-pre-line text-xl leading-9">{instructions[step].text}</p>
       <div className="grid gap-3 @sm:grid-cols-2"><Button className="min-h-11" variant="outline" disabled={step === 0} onClick={() => goTo(step - 1)}>Previous step</Button>{step < instructions.length - 1 ? <Button className="min-h-11" onClick={() => goTo(step + 1)}>Next step</Button> : <Button className="min-h-11" onClick={() => goTo(null)}>Finish cook mode</Button>}</div>
     </section> : null}
-    {ingredients.length ? <section className="rounded-lg border bg-card p-5"><h2 className="mb-4 text-2xl">Ingredients</h2><ul>{ingredients.map((item, index) => <Fragment key={index}>
+    {ingredients.length ? <section className="rounded-lg border bg-card p-5"><h2 className="mb-4 text-2xl">Ingredients</h2>{ingredientsIntro}<ul>{ingredients.map((item, index) => <Fragment key={index}>
       {item.group && item.group !== ingredients[index - 1]?.group ? <li className="pb-1 pt-5 font-semibold">{item.group}</li> : null}
-      <li className="border-b py-3 text-sm leading-6 last:border-0"><label className="flex min-h-11 items-start gap-3"><input type="checkbox" className="mt-1.5 shrink-0 accent-primary" /><span className="min-w-0 break-words">{displayed[index].text}{adjusted && displayed[index].text !== item.text ? <span className="block text-sm text-muted-foreground">Original: {item.text}</span> : adjusted && displayed[index].unchanged ? <span className="block text-sm text-muted-foreground">As written — check this amount</span> : null}</span></label>{renderIngredientAccessory?.(item, index)}</li>
-    </Fragment>)}</ul></section> : null}
+      <li className="border-b py-3 text-sm leading-6 last:border-0">{renderIngredientControl ? renderIngredientControl(item, index, <span className="min-w-0 break-words">{displayed[index].text}{adjusted && displayed[index].text !== item.text ? <span className="block text-sm text-muted-foreground">Original: {item.text}</span> : adjusted && displayed[index].unchanged ? <span className="block text-sm text-muted-foreground">As written — check this amount</span> : null}</span>) : <label className="flex min-h-11 items-start gap-3"><input type="checkbox" className="mt-1.5 shrink-0 accent-primary" /><span className="min-w-0 break-words">{displayed[index].text}{adjusted && displayed[index].text !== item.text ? <span className="block text-sm text-muted-foreground">Original: {item.text}</span> : adjusted && displayed[index].unchanged ? <span className="block text-sm text-muted-foreground">As written — check this amount</span> : null}</span></label>}{renderIngredientAccessory?.(item, index)}</li>
+    </Fragment>)}</ul>{ingredientsFooter}</section> : null}
     {instructions.length && step === null ? <section className="rounded-lg border bg-card p-5"><h2 className="mb-5 text-2xl">Method</h2><ol className="space-y-6">{instructions.map((item, index) => <li key={index} className="flex gap-4 text-sm leading-7"><span className="shrink-0 font-semibold text-primary">{index + 1}.</span><div className="min-w-0 break-words">{item.group && item.group !== instructions[index - 1]?.group ? <p className="font-semibold">{item.group}</p> : null}<p>{item.text}</p></div></li>)}</ol></section> : null}
     {recipeNotes.length ? <section className="rounded-lg border bg-card p-5"><h2 className="mb-4 text-2xl">Recipe notes</h2><div className="space-y-3 text-sm leading-7">{recipeNotes.map((note, index) => <p key={index}>{note.text}</p>)}</div></section> : null}
   </div>

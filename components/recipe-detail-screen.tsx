@@ -390,7 +390,7 @@ export function RecipeDetailScreen({ id }: { id: Id<"recipes"> }) {
             <RecipeSource sourceUrl={recipe.sourceUrl} sourceAuthor={recipe.sourceAuthor} recipeName={recipe.name} />
           ) : null}
           {recipe.servings ? <p className="text-sm text-muted-foreground">Servings: {recipe.servings}</p> : null}
-          {recipe.ingredients?.length || recipe.instructions?.length || recipe.recipeNotes?.length ? <PantryCookingPanel key={recipe._id} ingredients={recipe.ingredients} instructions={recipe.instructions} recipeNotes={recipe.recipeNotes} servings={recipe.servings} /> : null}
+          {recipe.ingredients?.length || recipe.instructions?.length || recipe.recipeNotes?.length ? <PantryCookingPanel recipeId={recipe._id} key={recipe._id} ingredients={recipe.ingredients} instructions={recipe.instructions} recipeNotes={recipe.recipeNotes} servings={recipe.servings} /> : null}
           {recipe.importWarnings?.length ? <section className="rounded-lg border border-amber-500/30 bg-card p-5"><h2 className="mb-3 text-xl">Things to check</h2><ul className="list-disc space-y-2 pl-5 text-sm leading-6">{recipe.importWarnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></section> : null}
           {recipe.note ? (
             <div className="rounded-lg border bg-background/85 p-4 shadow-sm backdrop-blur dark:bg-card/75">

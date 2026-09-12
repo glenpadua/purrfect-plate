@@ -4,13 +4,20 @@ import { importFailureCode, importDraft, importStatus, recipeContent, recipeMeta
 
 export default defineSchema({
   migrationRecords: defineTable({ legacyId: v.string(), recipeId: v.id("recipes") }).index("by_legacy", ["legacyId"]),
-  libraries: defineTable({ name: v.string(), slug: v.string(), createdAt: v.number() }).index("by_slug", ["slug"]),
+  libraries: defineTable({ name: v.string(), slug: v.string(), createdAt: v.number(), pantryVersion: v.optional(v.number()) }).index("by_slug", ["slug"]),
   memberships: defineTable({ libraryId: v.id("libraries"), userId: v.string(), email: v.string(), role: v.union(v.literal("owner"), v.literal("member")), createdAt: v.number() })
     .index("by_user", ["userId"]).index("by_library_user", ["libraryId", "userId"]),
   libraryInvites: defineTable({ libraryId: v.id("libraries"), email: v.string(), role: v.union(v.literal("owner"), v.literal("member")) }).index("by_email", ["email"]),
-  pantryItems: defineTable({ libraryId: v.id("libraries"), key: v.string(), name: v.string(), present: v.boolean(), updatedAt: v.number() })
+  // Stable ingredient identities survive removal from stock and renaming.
+  pantryItems: defineTable({ libraryId: v.id("libraries"), key: v.string(), name: v.string(), present: v.boolean(), updatedAt: v.number(), mergedInto: v.optional(v.id("pantryItems")) })
+    .index("by_library_key", ["libraryId", "key"])
+    .index("by_library_present_name", ["libraryId", "present", "name"])
+    .searchIndex("search_name", { searchField: "name", filterFields: ["libraryId", "present"] }),
+  ingredientAliases: defineTable({ libraryId: v.id("libraries"), key: v.string(), ingredientId: v.id("pantryItems") })
     .index("by_library_key", ["libraryId", "key"]),
-  shoppingItems: defineTable({ libraryId: v.id("libraries"), key: v.string(), name: v.string(), createdAt: v.number() })
+  recipeIngredientBindings: defineTable({ libraryId: v.id("libraries"), recipeId: v.id("recipes"), text: v.string(), ingredientIds: v.array(v.id("pantryItems")) })
+    .index("by_recipe_text", ["recipeId", "text"]),
+  shoppingItems: defineTable({ libraryId: v.id("libraries"), key: v.string(), name: v.string(), ingredientId: v.optional(v.id("pantryItems")), createdAt: v.number() })
     .index("by_library_key", ["libraryId", "key"]),
   recipes: defineTable({ ...recipeContent, ...recipeMetadata })
     .index("by_created_at", ["createdAt"]).index("by_updated_at", ["updatedAt"])
