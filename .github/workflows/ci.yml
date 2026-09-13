@@ -36,6 +36,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Lint and enforce feature boundaries
+        run: pnpm lint
+
+      - name: Check source formatting
+        run: pnpm format:check
+
       - name: Run tests
         run: pnpm test:run
 
@@ -55,3 +61,6 @@ jobs:
 
       - name: Build application
         run: pnpm build
+
+      - name: Check built web routing
+        run: pnpm test:web

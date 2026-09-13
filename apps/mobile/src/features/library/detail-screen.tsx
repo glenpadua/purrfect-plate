@@ -1,23 +1,16 @@
+import { useTask } from "../../hooks/use-task";
 import { useState } from "react";
 import { Image, View, useWindowDimensions } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useKeepAwake } from "expo-keep-awake";
 import type { Id } from "@purrfect-plate/recipe-core/api";
-import {
-  Body,
-  Button,
-  ErrorMessage,
-  Loading,
-  Page,
-  styles,
-  Title,
-  useTask,
-} from "../../ui";
+import { Body, Button, ErrorMessage, Loading, Page, styles, Title } from "../../ui";
 import { useRecipe, useRecipeActions } from "./data";
 import { SavedCookingPanel } from "../cooking/saved-cooking-panel";
 import { SourcePanel } from "../recipe-source/source-panel";
 function KeepAwake() {
-  useKeepAwake();
+  // Browsers may deny screen wake locks; leaving cook mode must still work.
+  useKeepAwake(undefined, { suppressDeactivateWarnings: true });
   return null;
 }
 export function DetailScreen() {
@@ -75,11 +68,7 @@ export function DetailScreen() {
             />
           </View>
           {recipe.sourceUrl && (
-            <SourcePanel
-              url={recipe.sourceUrl}
-              author={recipe.sourceAuthor}
-              name={recipe.name}
-            />
+            <SourcePanel url={recipe.sourceUrl} author={recipe.sourceAuthor} name={recipe.name} />
           )}
           {recipe.prepMinutes !== undefined && (
             <Body muted>Preparation: {recipe.prepMinutes} minutes</Body>
@@ -101,11 +90,11 @@ export function DetailScreen() {
             secondary
             title={`Mark cooked · ${recipe.cookCount} so far`}
             disabled={task.busy}
-            onPress={() =>
-              void task.run(() => actions.markCooked({ id: recipe._id }))
-            }
+            onPress={() => void task.run(() => actions.markCooked({ id: recipe._id }))}
           />
-          {!!recipe.importWarnings?.length && <ImportNotes key={`import-notes:${recipe._id}`} warnings={recipe.importWarnings} />}
+          {!!recipe.importWarnings?.length && (
+            <ImportNotes key={`import-notes:${recipe._id}`} warnings={recipe.importWarnings} />
+          )}
         </View>
       </View>
     </Page>
@@ -114,8 +103,20 @@ export function DetailScreen() {
 
 function ImportNotes({ warnings }: { warnings: string[] }) {
   const [expanded, setExpanded] = useState(false);
-  return <View style={styles.section}>
-    <Button secondary title={expanded ? "Hide import notes" : `Show import notes (${warnings.length})`} expanded={expanded} onPress={() => setExpanded(!expanded)} />
-    {expanded && warnings.map((warning, i) => <Body muted key={i}>{warning}</Body>)}
-  </View>;
+  return (
+    <View style={styles.section}>
+      <Button
+        secondary
+        title={expanded ? "Hide import notes" : `Show import notes (${warnings.length})`}
+        expanded={expanded}
+        onPress={() => setExpanded(!expanded)}
+      />
+      {expanded &&
+        warnings.map((warning, i) => (
+          <Body muted key={i}>
+            {warning}
+          </Body>
+        ))}
+    </View>
+  );
 }

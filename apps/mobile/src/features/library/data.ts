@@ -1,12 +1,5 @@
-import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api, type Id } from "@purrfect-plate/recipe-core/api";
-export function useLibrary(search: string) {
-  return usePaginatedQuery(
-    api.recipes.listPage,
-    { search },
-    { initialNumItems: 24 },
-  );
-}
 export function useRecipe(id: Id<"recipes">) {
   return useQuery(api.recipes.get, { id });
 }

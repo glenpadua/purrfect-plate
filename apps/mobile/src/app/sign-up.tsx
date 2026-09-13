@@ -1,2 +1,4 @@
 import { Redirect } from "expo-router";
-export default function SignUpRoute() { return <Redirect href="/" />; }
+export default function SignUpRoute() {
+  return <Redirect href="/" />;
+}

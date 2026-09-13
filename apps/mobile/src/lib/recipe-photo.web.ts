@@ -13,8 +13,7 @@ export async function chooseRecipePhoto(): Promise<string | null> {
     input.click();
   });
   if (!file) return null;
-  if (file.size > MAX_SOURCE_IMAGE_BYTES)
-    throw new Error("Choose a photo smaller than 10 MB.");
+  if (file.size > MAX_SOURCE_IMAGE_BYTES) throw new Error("Choose a photo smaller than 10 MB.");
   let image: ImageBitmap;
   try {
     image = await createImageBitmap(file);
@@ -36,17 +35,12 @@ export async function chooseRecipePhoto(): Promise<string | null> {
       if (blob?.type === "image/webp" && blob.size <= MAX_STORED_IMAGE_BYTES)
         return URL.createObjectURL(blob);
     }
-    throw new Error(
-      "This image could not fit the photo limit. Choose a simpler photo.",
-    );
+    throw new Error("This image could not fit the photo limit. Choose a simpler photo.");
   } finally {
     image.close();
   }
 }
-export async function sendRecipePhoto(
-  uri: string,
-  uploadUrl: string,
-): Promise<string> {
+export async function sendRecipePhoto(uri: string, uploadUrl: string): Promise<string> {
   const blob = await (await fetch(uri)).blob();
   if (blob.type !== "image/webp" || blob.size > MAX_STORED_IMAGE_BYTES)
     throw new Error("Choose the photo again to optimize it.");
@@ -57,7 +51,6 @@ export async function sendRecipePhoto(
   });
   if (!response.ok) throw new Error("Photo upload failed. Please try again.");
   const result = await response.json();
-  if (typeof result.storageId !== "string")
-    throw new Error("Photo upload did not finish.");
+  if (typeof result.storageId !== "string") throw new Error("Photo upload did not finish.");
   return result.storageId;
 }

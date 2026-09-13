@@ -1,16 +1,9 @@
+import { useTask } from "../../hooks/use-task";
 import { Linking, View } from "react-native";
 import { describeSource } from "@purrfect-plate/recipe-core";
-import { Body, Button, ErrorMessage, Heading, useTask } from "../../ui";
+import { Body, Button, ErrorMessage, Heading } from "../../ui";
 import { SourceEmbed } from "./source-embed";
-export function SourcePanel({
-  url,
-  author,
-  name,
-}: {
-  url: string;
-  author?: string;
-  name: string;
-}) {
+export function SourcePanel({ url, author, name }: { url: string; author?: string; name: string }) {
   const source = describeSource(url);
   const task = useTask();
   if (!source) return null;

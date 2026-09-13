@@ -2,14 +2,23 @@ import { useEffect, useRef } from "react";
 import type { Source } from "@purrfect-plate/recipe-core";
 
 export function SourceFrame({ source, name }: { source: Source; name: string }) {
-  return source.instagramUrl ? <InstagramPost url={source.instagramUrl} /> : <iframe
-    src={source.embedUrl}
-    title={`${source.provider} source for ${name}`}
-    style={{ width: "100%", minHeight: 200, aspectRatio: source.portrait ? "9/16" : "16/9", border: 0 }}
-    allow="encrypted-media; fullscreen; picture-in-picture"
-    allowFullScreen
-    referrerPolicy="strict-origin-when-cross-origin"
-  />;
+  return source.instagramUrl ? (
+    <InstagramPost url={source.instagramUrl} />
+  ) : (
+    <iframe
+      src={source.embedUrl}
+      title={`${source.provider} source for ${name}`}
+      style={{
+        width: "100%",
+        minHeight: 200,
+        aspectRatio: source.portrait ? "9/16" : "16/9",
+        border: 0,
+      }}
+      allow="encrypted-media; fullscreen; picture-in-picture"
+      allowFullScreen
+      referrerPolicy="strict-origin-when-cross-origin"
+    />
+  );
 }
 function InstagramPost({ url }: { url: string }) {
   const host = useRef<HTMLDivElement>(null);

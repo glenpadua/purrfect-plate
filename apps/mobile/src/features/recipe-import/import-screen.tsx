@@ -1,19 +1,9 @@
+import { useTask } from "../../hooks/use-task";
 import { useState } from "react";
 import { Image, Linking, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import type { Id } from "@purrfect-plate/recipe-core/api";
-import {
-  Body,
-  Button,
-  ErrorMessage,
-  Field,
-  Heading,
-  Loading,
-  Page,
-  styles,
-  Title,
-  useTask,
-} from "../../ui";
+import { Body, Button, ErrorMessage, Field, Heading, Loading, Page, styles, Title } from "../../ui";
 import { useImport, useImports } from "./data";
 import { RecipeForm } from "../recipe-editor/recipe-form";
 export function ImportScreen() {
@@ -26,8 +16,7 @@ export function ImportScreen() {
     <Page>
       <Title>Save a good find.</Title>
       <Body>
-        Paste a public recipe page, post or video. Review the recovered details
-        before saving.
+        Paste a public recipe page, post or video. Review the recovered details before saving.
       </Body>
       <Field
         label="Recipe link"
@@ -53,13 +42,22 @@ export function ImportScreen() {
       {lastCleared && (
         <View style={styles.row}>
           <Body>Failed import cleared.</Body>
-          <Button secondary title="Undo clear" disabled={task.busy} onPress={() => void task.run(async () => {
-            await setDismissed({ id: lastCleared, dismissed: false });
-            router.setParams({ cleared: undefined });
-          })} />
+          <Button
+            secondary
+            title="Undo clear"
+            disabled={task.busy}
+            onPress={() =>
+              void task.run(async () => {
+                await setDismissed({ id: lastCleared, dismissed: false });
+                router.setParams({ cleared: undefined });
+              })
+            }
+          />
         </View>
       )}
-      {jobs?.length === 0 && <Body muted>No recent imports. Paste a recipe link above to get started.</Body>}
+      {jobs?.length === 0 && (
+        <Body muted>No recent imports. Paste a recipe link above to get started.</Body>
+      )}
       {jobs === undefined ? (
         <Loading />
       ) : (
@@ -77,18 +75,21 @@ export function ImportScreen() {
                     : "View progress"
               }
               onPress={() =>
-                router.push(
-                  job.recipeId
-                    ? `/recipe/${job.recipeId}`
-                    : `/import/${job.id}`,
-                )
+                router.push(job.recipeId ? `/recipe/${job.recipeId}` : `/import/${job.id}`)
               }
             />
             {job.status === "failed" && (
-              <Button secondary title="Clear failed import" disabled={task.busy} onPress={() => void task.run(async () => {
-                await setDismissed({ id: job.id, dismissed: true });
-                router.setParams({ cleared: job.id });
-              })} />
+              <Button
+                secondary
+                title="Clear failed import"
+                disabled={task.busy}
+                onPress={() =>
+                  void task.run(async () => {
+                    await setDismissed({ id: job.id, dismissed: true });
+                    router.setParams({ cleared: job.id });
+                  })
+                }
+              />
             )}
           </View>
         ))
@@ -120,9 +121,7 @@ export function ImportReviewScreen() {
       {job.status === "queued" || job.status === "processing" ? (
         <>
           <Loading />
-          <Body muted>
-            You can return to the library. This import will keep running.
-          </Body>
+          <Body muted>You can return to the library. This import will keep running.</Body>
         </>
       ) : null}
       {job.status === "failed" && (
@@ -133,18 +132,23 @@ export function ImportReviewScreen() {
             disabled={task.busy}
             onPress={() => void task.run(() => retry({ id: job.id }))}
           />
-          <Button secondary title="Clear failed import" disabled={task.busy} onPress={() => void task.run(async () => {
-            await setDismissed({ id: job.id, dismissed: true });
-            router.replace({ pathname: "/import", params: { cleared: job.id } });
-          })} />
+          <Button
+            secondary
+            title="Clear failed import"
+            disabled={task.busy}
+            onPress={() =>
+              void task.run(async () => {
+                await setDismissed({ id: job.id, dismissed: true });
+                router.replace({ pathname: "/import", params: { cleared: job.id } });
+              })
+            }
+          />
           {job.failureCode === "not_recipe" && (
             <Button
               secondary
               title="I believe this is a recipe — retry"
               disabled={task.busy}
-              onPress={() =>
-                void task.run(() => retry({ id: job.id, continueAnyway: true }))
-              }
+              onPress={() => void task.run(() => retry({ id: job.id, continueAnyway: true }))}
             />
           )}
         </>
@@ -158,11 +162,19 @@ export function ImportReviewScreen() {
       {job.status === "needs_review" && job.draft && (
         <>
           <Heading>Check before saving</Heading>
-          {job.imageUrl && <Image source={{ uri: job.imageUrl }} style={{ width: "100%", aspectRatio: 16 / 9, borderRadius: 12 }} resizeMode="contain" />}
+          {job.imageUrl && (
+            <Image
+              source={{ uri: job.imageUrl }}
+              style={{ width: "100%", aspectRatio: 16 / 9, borderRadius: 12 }}
+              resizeMode="contain"
+            />
+          )}
           {job.draft.warnings.map((warning, i) => (
             <Body key={i}>{warning}</Body>
           ))}
-          {(!job.draft.ingredients.length || !job.draft.instructions.length) && <AlternativeRecipeSearch initialQuery={`${job.draft.name} recipe`} />}
+          {(!job.draft.ingredients.length || !job.draft.instructions.length) && (
+            <AlternativeRecipeSearch initialQuery={`${job.draft.name} recipe`} />
+          )}
           <RecipeForm
             showKitchenNotes={false}
             key={job.updatedAt}
@@ -189,15 +201,18 @@ export function ImportReviewScreen() {
             title="Re-extract source"
             disabled={task.busy}
             onPress={() =>
-              void task.run(() =>
-                recheck({ id: job.id, expectedUpdatedAt: job.updatedAt }),
-              )
+              void task.run(() => recheck({ id: job.id, expectedUpdatedAt: job.updatedAt }))
             }
           />
-          <Body muted>Re-extraction replaces this unsaved draft and any edits in this form, and counts as another import.</Body>
+          <Body muted>
+            Re-extraction replaces this unsaved draft and any edits in this form, and counts as
+            another import.
+          </Body>
         </>
       )}
-      {job.status === "failed" && (job.failureCode === "insufficient" || job.searchQuery) && <AlternativeRecipeSearch initialQuery={job.searchQuery ?? ""} />}
+      {job.status === "failed" && (job.failureCode === "insufficient" || job.searchQuery) && (
+        <AlternativeRecipeSearch initialQuery={job.searchQuery ?? ""} />
+      )}
     </Page>
   );
 }
@@ -205,12 +220,31 @@ export function ImportReviewScreen() {
 function AlternativeRecipeSearch({ initialQuery }: { initialQuery: string }) {
   const [query, setQuery] = useState(initialQuery);
   const task = useTask();
-  return <View style={styles.section}>
-    <Heading>Find a different recipe</Heading>
-    <Body muted>These are different recipes, not missing details from this source. Choose one, then import its link separately.</Body>
-    <Field label="Alternative recipe search" value={query} onChangeText={setQuery} maxLength={100} />
-    <Button secondary title="Search recipe websites" disabled={task.busy || !query.trim()} onPress={() => void task.run(() => Linking.openURL(`https://www.google.com/search?q=${encodeURIComponent(query.trim())}`))} />
-    <Button secondary title="Add recipe manually" onPress={() => router.push("/add")} />
-    <ErrorMessage message={task.error} />
-  </View>;
+  return (
+    <View style={styles.section}>
+      <Heading>Find a different recipe</Heading>
+      <Body muted>
+        These are different recipes, not missing details from this source. Choose one, then import
+        its link separately.
+      </Body>
+      <Field
+        label="Alternative recipe search"
+        value={query}
+        onChangeText={setQuery}
+        maxLength={100}
+      />
+      <Button
+        secondary
+        title="Search recipe websites"
+        disabled={task.busy || !query.trim()}
+        onPress={() =>
+          void task.run(() =>
+            Linking.openURL(`https://www.google.com/search?q=${encodeURIComponent(query.trim())}`),
+          )
+        }
+      />
+      <Button secondary title="Add recipe manually" onPress={() => router.push("/add")} />
+      <ErrorMessage message={task.error} />
+    </View>
+  );
 }

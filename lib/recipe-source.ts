@@ -13,12 +13,7 @@ export function describeSource(value: string): Source | null {
   } catch {
     return null;
   }
-  if (
-    !["https:", "http:"].includes(url.protocol) ||
-    url.username ||
-    url.password
-  )
-    return null;
+  if (!["https:", "http:"].includes(url.protocol) || url.username || url.password) return null;
   const host = url.hostname.replace(/^(www|m)\./, "");
   if ((host === "youtube.com" || host === "youtu.be") && !url.port) {
     const match = url.pathname.match(/^\/(shorts|embed|live)\/([\w-]{11})\/?$/);

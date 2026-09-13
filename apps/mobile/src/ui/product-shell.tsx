@@ -29,9 +29,7 @@ export function ProductShell({ children }: { children: ReactNode }) {
     >
       {destinations.map(({ href, label }) => {
         const active =
-          href === "/"
-            ? path === "/" || path.startsWith("/recipe")
-            : path.startsWith(href);
+          href === "/" ? path === "/" || path.startsWith("/recipe") : path.startsWith(href);
         return (
           <Link key={href} href={href} asChild>
             <Pressable
@@ -92,9 +90,7 @@ export function ProductShell({ children }: { children: ReactNode }) {
           {detail ? (
             <Pressable
               accessibilityRole="button"
-              onPress={() =>
-                router.canGoBack() ? router.back() : router.replace("/")
-              }
+              onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
               style={{ padding: 12 }}
             >
               <Text

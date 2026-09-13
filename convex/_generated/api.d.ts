@@ -16,7 +16,13 @@ import type * as localImportWorker from "../localImportWorker.js";
 import type * as migrations from "../migrations.js";
 import type * as model from "../model.js";
 import type * as pantry from "../pantry.js";
+import type * as pantry_ingredients from "../pantry/ingredients.js";
+import type * as pantry_maintenance from "../pantry/maintenance.js";
+import type * as pantry_model from "../pantry/model.js";
+import type * as pantry_recipes from "../pantry/recipes.js";
+import type * as pantry_shopping from "../pantry/shopping.js";
 import type * as quantityMaintenance from "../quantityMaintenance.js";
+import type * as recipeContent from "../recipeContent.js";
 import type * as recipes from "../recipes.js";
 import type * as tagMaintenance from "../tagMaintenance.js";
 
@@ -35,7 +41,13 @@ declare const fullApi: ApiFromModules<{
   migrations: typeof migrations;
   model: typeof model;
   pantry: typeof pantry;
+  "pantry/ingredients": typeof pantry_ingredients;
+  "pantry/maintenance": typeof pantry_maintenance;
+  "pantry/model": typeof pantry_model;
+  "pantry/recipes": typeof pantry_recipes;
+  "pantry/shopping": typeof pantry_shopping;
   quantityMaintenance: typeof quantityMaintenance;
+  recipeContent: typeof recipeContent;
   recipes: typeof recipes;
   tagMaintenance: typeof tagMaintenance;
 }>;

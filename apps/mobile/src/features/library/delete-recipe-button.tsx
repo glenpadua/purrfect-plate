@@ -46,8 +46,7 @@ export function DeleteRecipeButton({
     <View style={{ gap: 12 }}>
       <Body>Delete “{recipeName}”?</Body>
       <Body muted>
-        This removes the recipe from your shared library for everyone. This
-        can’t be undone.
+        This removes the recipe from your shared library for everyone. This can’t be undone.
       </Body>
       <ErrorMessage message={error} />
       <View style={styles.row}>

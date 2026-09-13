@@ -1,17 +1,9 @@
+import { useTask } from "../../hooks/use-task";
 import { useState } from "react";
 import { Image } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import type { Id } from "@purrfect-plate/recipe-core/api";
-import {
-  Body,
-  Button,
-  ErrorMessage,
-  Loading,
-  Page,
-  Title,
-  Heading,
-  useTask,
-} from "../../ui";
+import { Body, Button, ErrorMessage, Loading, Page, Title, Heading } from "../../ui";
 import { useRecipe, useRecipeActions, usePhotoActions } from "../library/data";
 import { RecipeForm, type EditableRecipe } from "./recipe-form";
 import { chooseRecipePhoto, sendRecipePhoto } from "../../lib/recipe-photo";
@@ -50,11 +42,17 @@ function Editor({
   return (
     <Page>
       <Title>{id ? "Edit recipe" : "Add a recipe"}</Title>
-      {!id && <>
-        <Body muted>Have a recipe link? Import its details, then review before saving.</Body>
-        <Button title="Import from a link" onPress={() => router.push("/import")} disabled={task.busy || saving} />
-        <Heading>Or add it manually</Heading>
-      </>}
+      {!id && (
+        <>
+          <Body muted>Have a recipe link? Import its details, then review before saving.</Body>
+          <Button
+            title="Import from a link"
+            onPress={() => router.push("/import")}
+            disabled={task.busy || saving}
+          />
+          <Heading>Or add it manually</Heading>
+        </>
+      )}
       {preview && (
         <Image
           source={{ uri: preview }}
@@ -77,31 +75,28 @@ function Editor({
       <RecipeForm
         initial={initial}
         disabled={task.busy}
-        onCancel={() => id ? router.replace(`/recipe/${id}`) : router.back()}
+        onCancel={() => (id ? router.replace(`/recipe/${id}`) : router.back())}
         onSave={async (content) => {
           setSaving(true);
           try {
-          let imageStorageId: Id<"_storage"> | undefined;
-          if (photo) {
-            const url = await photos.generateUploadUrl({});
-            imageStorageId = (await sendRecipePhoto(
-              photo,
-              url,
-            )) as Id<"_storage">;
-            await photos.registerUpload({ storageId: imageStorageId });
-          }
-          if (id) {
-            await actions.update({ id, ...content, imageStorageId });
-            router.replace(`/recipe/${id}`);
-          } else {
-            const newId = await actions.create({
-              ...content,
-              prepMinutes: content.prepMinutes ?? undefined,
-              cookMinutes: content.cookMinutes ?? undefined,
-              imageStorageId,
-            });
-            router.replace(`/recipe/${newId}`);
-          }
+            let imageStorageId: Id<"_storage"> | undefined;
+            if (photo) {
+              const url = await photos.generateUploadUrl({});
+              imageStorageId = (await sendRecipePhoto(photo, url)) as Id<"_storage">;
+              await photos.registerUpload({ storageId: imageStorageId });
+            }
+            if (id) {
+              await actions.update({ id, ...content, imageStorageId });
+              router.replace(`/recipe/${id}`);
+            } else {
+              const newId = await actions.create({
+                ...content,
+                prepMinutes: content.prepMinutes ?? undefined,
+                cookMinutes: content.cookMinutes ?? undefined,
+                imageStorageId,
+              });
+              router.replace(`/recipe/${newId}`);
+            }
           } finally {
             setSaving(false);
           }

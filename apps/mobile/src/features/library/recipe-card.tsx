@@ -1,8 +1,9 @@
+import { useTask } from "../../hooks/use-task";
 import { Image, Pressable, Text, View } from "react-native";
 import { Link } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import type { Recipe } from "@purrfect-plate/recipe-core/api";
-import { colors, useTask, ErrorMessage } from "../../ui";
+import { colors, ErrorMessage } from "../../ui";
 import { useRecipeActions } from "./data";
 import { DeleteRecipeButton } from "./delete-recipe-button";
 export function RecipeCard({ recipe }: { recipe: Recipe }) {
@@ -19,10 +20,7 @@ export function RecipeCard({ recipe }: { recipe: Recipe }) {
         }}
       >
         <Link href={`/recipe/${recipe._id}`} asChild>
-          <Pressable
-            accessibilityLabel={`Open ${recipe.name}`}
-            style={{ flex: 1 }}
-          >
+          <Pressable accessibilityLabel={`Open ${recipe.name}`} style={{ flex: 1 }}>
             {recipe.imageUrl ? (
               <Image
                 source={{ uri: recipe.imageUrl }}
@@ -30,11 +28,7 @@ export function RecipeCard({ recipe }: { recipe: Recipe }) {
                 resizeMode="cover"
               />
             ) : (
-              <Text
-                style={{ textAlign: "center", marginTop: 48, fontSize: 36 }}
-              >
-                🐾
-              </Text>
+              <Text style={{ textAlign: "center", marginTop: 48, fontSize: 36 }}>🐾</Text>
             )}
             <LinearGradient
               colors={["transparent", "#25160acc"]}
@@ -57,20 +51,12 @@ export function RecipeCard({ recipe }: { recipe: Recipe }) {
               >
                 {recipe.name}
               </Text>
-              <Text
-                style={{ fontFamily: "Outfit", fontSize: 12, color: "#fffaf4" }}
-              >
+              <Text style={{ fontFamily: "Outfit", fontSize: 12, color: "#fffaf4" }}>
                 {recipe.tags.join(" · ") ||
-                  (recipe.origin === "imported"
-                    ? "Saved recipe"
-                    : "From our kitchen")}
+                  (recipe.origin === "imported" ? "Saved recipe" : "From our kitchen")}
               </Text>
-              <Text
-                style={{ fontFamily: "Outfit", fontSize: 12, color: "#fffaf4" }}
-              >
-                {recipe.cookCount
-                  ? `Cooked ${recipe.cookCount} times`
-                  : "New to our kitchen"}
+              <Text style={{ fontFamily: "Outfit", fontSize: 12, color: "#fffaf4" }}>
+                {recipe.cookCount ? `Cooked ${recipe.cookCount} times` : "New to our kitchen"}
               </Text>
             </View>
           </Pressable>
@@ -78,9 +64,7 @@ export function RecipeCard({ recipe }: { recipe: Recipe }) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={
-            recipe.isFavorite
-              ? `Remove ${recipe.name} from favourites`
-              : `Favourite ${recipe.name}`
+            recipe.isFavorite ? `Remove ${recipe.name} from favourites` : `Favourite ${recipe.name}`
           }
           disabled={task.busy}
           onPress={() =>

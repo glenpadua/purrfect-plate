@@ -7,7 +7,9 @@ import { mkdir, writeFile } from "node:fs/promises";
 
 const id = process.argv[2];
 if (!id || id === "--help") {
-  console.log("Usage: node --env-file=.env.local scripts/experiments/youtube-gemini.mjs VIDEO_ID\nRequires GEMINI_API_KEY; optional YOUTUBE_GEMINI_MODEL (default gemini-3.6-flash).");
+  console.log(
+    "Usage: node --env-file=.env.local scripts/experiments/youtube-gemini.mjs VIDEO_ID\nRequires GEMINI_API_KEY; optional YOUTUBE_GEMINI_MODEL (default gemini-3.6-flash).",
+  );
   process.exit(id ? 0 : 1);
 }
 if (!/^[A-Za-z0-9_-]{11}$/.test(id)) throw new Error("Pass one 11-character YouTube video ID.");
@@ -35,7 +37,14 @@ const schema = {
     visualObservations: { type: "array", items: passage },
     missingInformation: { type: "array", items: { type: "string" } },
   },
-  required: ["videoAccessible", "title", "spokenPassages", "visibleText", "visualObservations", "missingInformation"],
+  required: [
+    "videoAccessible",
+    "title",
+    "spokenPassages",
+    "visibleText",
+    "visualObservations",
+    "missingInformation",
+  ],
   additionalProperties: false,
 };
 const prompt = `Inspect this exact supplied video as source evidence for a recipe import.
@@ -58,8 +67,14 @@ try {
     body: JSON.stringify({
       model,
       store: false,
-      input: [{ type: "text", text: prompt }, { type: "video", uri: url,
-        processing: { type: "static", start_offset: "0s", end_offset: "600s", fps: 1 } }],
+      input: [
+        { type: "text", text: prompt },
+        {
+          type: "video",
+          uri: url,
+          processing: { type: "static", start_offset: "0s", end_offset: "600s", fps: 1 },
+        },
+      ],
       response_format: { type: "text", mime_type: "application/json", schema },
       generation_config: { max_output_tokens: 8000, thinking_level: "low" },
     }),
@@ -69,36 +84,79 @@ try {
   const body = await response.text();
   if (body.length > 1_000_000) throw new Error("Provider response exceeds experiment size limit.");
   const data = JSON.parse(body);
-  if (data.status !== "completed") throw new Error("Provider did not finish; no recipe evidence accepted.");
-  const text = (data.steps || []).filter(s => s.type === "model_output")
-    .flatMap(s => s.content || []).filter(c => c.type === "text").map(c => c.text).join("");
+  if (data.status !== "completed")
+    throw new Error("Provider did not finish; no recipe evidence accepted.");
+  const text = (data.steps || [])
+    .filter((s) => s.type === "model_output")
+    .flatMap((s) => s.content || [])
+    .filter((c) => c.type === "text")
+    .map((c) => c.text)
+    .join("");
   const evidence = JSON.parse(text);
-  if (typeof evidence.videoAccessible !== "boolean" || typeof evidence.title !== "string"
-      || !Array.isArray(evidence.missingInformation) || evidence.missingInformation.some(s => typeof s !== "string")) {
+  if (
+    typeof evidence.videoAccessible !== "boolean" ||
+    typeof evidence.title !== "string" ||
+    !Array.isArray(evidence.missingInformation) ||
+    evidence.missingInformation.some((s) => typeof s !== "string")
+  ) {
     throw new Error("Invalid evidence envelope; no recipe evidence accepted.");
   }
   let totalCharacters = 0;
   for (const kind of ["spokenPassages", "visibleText", "visualObservations"]) {
-    if (!Array.isArray(evidence[kind]) || evidence[kind].length > 200 || evidence[kind].some(
-      p => !Number.isFinite(p.seconds) || p.seconds < 0 || p.seconds > 600 || typeof p.text !== "string" || p.text.length > 3000,
-    )) throw new Error("Invalid evidence passages; no recipe evidence accepted.");
+    if (
+      !Array.isArray(evidence[kind]) ||
+      evidence[kind].length > 200 ||
+      evidence[kind].some(
+        (p) =>
+          !Number.isFinite(p.seconds) ||
+          p.seconds < 0 ||
+          p.seconds > 600 ||
+          typeof p.text !== "string" ||
+          p.text.length > 3000,
+      )
+    )
+      throw new Error("Invalid evidence passages; no recipe evidence accepted.");
     totalCharacters += evidence[kind].reduce((sum, passage) => sum + passage.text.length, 0);
   }
-  if (totalCharacters > 60000) throw new Error("Video evidence exceeds its size limit; no recipe evidence accepted.");
+  if (totalCharacters > 60000)
+    throw new Error("Video evidence exceeds its size limit; no recipe evidence accepted.");
   const seconds = Math.round((performance.now() - started) / 1000);
   const directory = new URL("../../outputs/deployment/youtube/", import.meta.url);
   await mkdir(directory, { recursive: true });
   const file = new URL(`${id}-gemini-${Date.now()}.json`, directory);
-  await writeFile(file, JSON.stringify({ checkedAt: new Date().toISOString(), url, model, seconds, usage: data.usage, evidence }, null, 2), { mode: 0o600 });
-  console.log(JSON.stringify({ id, model, seconds, videoAccessible: evidence.videoAccessible,
-    spokenPassages: evidence.spokenPassages.length, visibleText: evidence.visibleText.length,
-    visualObservations: evidence.visualObservations.length, output: file.pathname,
-    acceptance: "Human source comparison and a hosted run are still required." }));
+  await writeFile(
+    file,
+    JSON.stringify(
+      { checkedAt: new Date().toISOString(), url, model, seconds, usage: data.usage, evidence },
+      null,
+      2,
+    ),
+    { mode: 0o600 },
+  );
+  console.log(
+    JSON.stringify({
+      id,
+      model,
+      seconds,
+      videoAccessible: evidence.videoAccessible,
+      spokenPassages: evidence.spokenPassages.length,
+      visibleText: evidence.visibleText.length,
+      visualObservations: evidence.visualObservations.length,
+      output: file.pathname,
+      acceptance: "Human source comparison and a hosted run are still required.",
+    }),
+  );
 } catch (error) {
   // Neither request headers nor provider bodies belong in application logs.
-  console.error(error instanceof SyntaxError ? "Gemini returned invalid JSON." :
-    error?.name === "TimeoutError" ? "Gemini timed out after 150 seconds." :
-    error?.message?.startsWith("Gemini HTTP") || error?.message?.includes("no recipe evidence accepted") ? error.message :
-    "YouTube Gemini experiment failed; no recipe evidence accepted.");
+  console.error(
+    error instanceof SyntaxError
+      ? "Gemini returned invalid JSON."
+      : error?.name === "TimeoutError"
+        ? "Gemini timed out after 150 seconds."
+        : error?.message?.startsWith("Gemini HTTP") ||
+            error?.message?.includes("no recipe evidence accepted")
+          ? error.message
+          : "YouTube Gemini experiment failed; no recipe evidence accepted.",
+  );
   process.exitCode = 1;
 }

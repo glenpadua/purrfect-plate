@@ -3,7 +3,9 @@ export async function shareShopping(text: string) {
   try {
     const copied = await Promise.race([
       navigator.clipboard.writeText(text).then(() => true),
-      new Promise<boolean>(resolve => { timeout = setTimeout(() => resolve(false), 1000); }),
+      new Promise<boolean>((resolve) => {
+        timeout = setTimeout(() => resolve(false), 1000);
+      }),
     ]);
     return copied ? "Shopping list copied." : "Select and copy your list below.";
   } catch {

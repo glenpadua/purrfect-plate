@@ -47,7 +47,8 @@ export function CookingPanel({
   const [localPreference, setLocalPreference] = useState<CookingPreference>(originalCooking);
   const [showOriginal, setShowOriginal] = useState(false);
   const current = preference ?? localPreference;
-  const factor = cookingFactor(current.adjustment, info?.count ?? null, recipe.ingredients ?? []) ?? 1;
+  const factor =
+    cookingFactor(current.adjustment, info?.count ?? null, recipe.ingredients ?? []) ?? 1;
   const units = current.units;
   function change(next: CookingPreference) {
     if (onPreferenceChange) onPreferenceChange(next);
@@ -56,8 +57,7 @@ export function CookingPanel({
   const [step, setStep] = useState<number | null>(null);
   const [finished, setFinished] = useState(false);
   const instructions = recipe.instructions ?? [];
-  const currentStep =
-    step === null ? null : Math.min(step, Math.max(0, instructions.length - 1));
+  const currentStep = step === null ? null : Math.min(step, Math.max(0, instructions.length - 1));
   function cooking(active: boolean) {
     setStep(active ? 0 : null);
     setFinished(false);
@@ -65,20 +65,36 @@ export function CookingPanel({
   }
   return (
     <View style={{ gap: 20 }}>
-      <ServingControls info={info} sourceServings={recipe.servings} ingredients={recipe.ingredients ?? []}
-        preference={current} onChange={change} onBaseChange={onBaseServingsChange} disabled={preferencesLoading} />
+      <ServingControls
+        info={info}
+        sourceServings={recipe.servings}
+        ingredients={recipe.ingredients ?? []}
+        preference={current}
+        onChange={change}
+        onBaseChange={onBaseServingsChange}
+        disabled={preferencesLoading}
+      />
       {persistenceStatus}
       <Heading>Ingredients</Heading>
-      {(factor !== 1 || units !== "original") && <Button secondary title={showOriginal ? "Hide original amounts" : "Show original amounts"} expanded={showOriginal} onPress={() => setShowOriginal(!showOriginal)} />}
+      {(factor !== 1 || units !== "original") && (
+        <Button
+          secondary
+          title={showOriginal ? "Hide original amounts" : "Show original amounts"}
+          expanded={showOriginal}
+          onPress={() => setShowOriginal(!showOriginal)}
+        />
+      )}
       {ingredientsIntro}
       {(recipe.ingredients ?? []).map((line, i, lines) => {
         const displayed = ingredientForCooking(line, { factor, units });
         return (
           <View key={`${i}:${line.text}`} style={{ gap: 7 }}>
-            {line.group && line.group !== lines[i - 1]?.group && (
-              <Heading>{line.group}</Heading>
+            {line.group && line.group !== lines[i - 1]?.group && <Heading>{line.group}</Heading>}
+            {ingredientControl ? (
+              ingredientControl(line.text, displayed.text, i)
+            ) : (
+              <Body>{displayed.text}</Body>
             )}
-            {ingredientControl ? ingredientControl(line.text, displayed.text, i) : <Body>{displayed.text}</Body>}
             {showOriginal && displayed.text !== line.text && (
               <Body muted>Original: {line.text}</Body>
             )}
@@ -89,7 +105,11 @@ export function CookingPanel({
         );
       })}
       {ingredientsFooter}
-      {factor !== 1 && instructions.length > 0 && <Body muted>Method, times and temperatures are as written. Use the adjusted ingredient amounts above.</Body>}
+      {factor !== 1 && instructions.length > 0 && (
+        <Body muted>
+          Method, times and temperatures are as written. Use the adjusted ingredient amounts above.
+        </Body>
+      )}
       {finished && <Body>Cooking finished. Enjoy your meal!</Body>}
       {instructions.length > 0 &&
         (currentStep === null ? (
@@ -127,10 +147,7 @@ export function CookingPanel({
                 onPress={() => setStep(currentStep - 1)}
               />
               {currentStep < instructions.length - 1 ? (
-                <Button
-                  title="Next step"
-                  onPress={() => setStep(currentStep + 1)}
-                />
+                <Button title="Next step" onPress={() => setStep(currentStep + 1)} />
               ) : (
                 <Button
                   title="Finish cooking"
@@ -141,11 +158,7 @@ export function CookingPanel({
                 />
               )}
             </View>
-            <Button
-              secondary
-              title="Exit cook mode"
-              onPress={() => cooking(false)}
-            />
+            <Button secondary title="Exit cook mode" onPress={() => cooking(false)} />
           </View>
         ))}
       {!!recipe.recipeNotes?.length && (

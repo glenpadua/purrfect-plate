@@ -1,23 +1,10 @@
+import { useTask } from "../../hooks/use-task";
 import { useMemo, useState } from "react";
 import { View, ScrollView, useWindowDimensions } from "react-native";
 import { router } from "expo-router";
-import { useQueries } from "convex/react";
-import type { FunctionReturnType } from "convex/server";
-import { api } from "@purrfect-plate/recipe-core/api";
-import {
-  Body,
-  Button,
-  Field,
-  Heading,
-  Loading,
-  Page,
-  styles,
-  Title,
-  useTask,
-  ErrorMessage,
-} from "../../ui";
+import { Body, Button, Field, Heading, Loading, Page, styles, Title, ErrorMessage } from "../../ui";
 import { useProductLibrary, useRecipeActions } from "./data";
-import { usePantryReady } from "../pantry/data";
+import { usePantryReady, useRecipeCoverage } from "../pantry/data";
 import { RecipeCard } from "./recipe-card";
 export function LibraryScreen() {
   const actions = useRecipeActions();
@@ -28,22 +15,19 @@ export function LibraryScreen() {
   const [importedOnly, setImportedOnly] = useState(false);
   const [choice, setChoice] = useState<string>();
   const { recipes: matchingRecipes, tags: allTags } = useProductLibrary(search, tags);
-  const recipes = importedOnly ? matchingRecipes?.filter(recipe => recipe.origin === "imported") : matchingRecipes;
+  const recipes = importedOnly
+    ? matchingRecipes?.filter((recipe) => recipe.origin === "imported")
+    : matchingRecipes;
   const pantry = usePantryReady();
-  const coverageQueries = useMemo(() => {
-    const requests: Record<string, { query: typeof api.pantry.coverage; args: { recipeIds: NonNullable<typeof matchingRecipes>[number]["_id"][] } }> = {};
-    if (pantry.ready && pantryFirst && matchingRecipes) {
-      for (let i = 0; i < matchingRecipes.length; i += 20)
-        requests[String(i)] = { query: api.pantry.coverage, args: { recipeIds: matchingRecipes.slice(i, i + 20).map(recipe => recipe._id) } };
-    }
-    return requests;
-  }, [pantry.ready, pantryFirst, matchingRecipes]);
-  const coverageResults = useQueries(coverageQueries);
-  const coverageError = Object.values(coverageResults).some(result => result instanceof Error);
-  const coverageLoading = Object.keys(coverageQueries).some(key => !coverageResults[key]);
-  const coverage = new Map<string, { present: number; total: number }>();
-  for (const result of Object.values(coverageResults))
-    if (Array.isArray(result)) for (const item of result as FunctionReturnType<typeof api.pantry.coverage>) coverage.set(item.recipeId, item);
+  const recipeIds = useMemo(
+    () => matchingRecipes?.map((recipe) => recipe._id) ?? [],
+    [matchingRecipes],
+  );
+  const {
+    coverage,
+    error: coverageError,
+    loading: coverageLoading,
+  } = useRecipeCoverage(recipeIds, pantry.ready && pantryFirst);
 
   const { width } = useWindowDimensions();
   const columns = width >= 1000 ? 4 : width >= 650 ? 3 : 2;
@@ -61,32 +45,21 @@ export function LibraryScreen() {
   function choose() {
     const candidates = recipes?.filter((recipe) => recipe._id !== choice);
     const options = candidates?.length ? candidates : recipes;
-    if (options?.length)
-      setChoice(options[Math.floor(Math.random() * options.length)]._id);
+    if (options?.length) setChoice(options[Math.floor(Math.random() * options.length)]._id);
   }
   return (
     <Page>
       <Title>Recipe library</Title>
-      <Body muted>
-        Browse the food worth repeating, then let dinner choose itself.
-      </Body>
+      <Body muted>Browse the food worth repeating, then let dinner choose itself.</Body>
       <View style={{ gap: 12 }}>
-        <Field
-          label="Search dishes, notes, tags"
-          value={search}
-          onChangeText={setSearch}
-        />
+        <Field label="Search dishes, notes, tags" value={search} onChangeText={setSearch} />
         <View style={styles.row}>
           <Button
             title="What should I cook?"
             disabled={!recipes?.length || task.busy}
             onPress={choose}
           />
-          <Button
-            secondary
-            title="＋ Add recipe"
-            onPress={() => router.push("/add")}
-          />
+          <Button secondary title="＋ Add recipe" onPress={() => router.push("/add")} />
         </View>
         <ScrollView
           horizontal
@@ -131,7 +104,12 @@ export function LibraryScreen() {
           onPress={() => setPantryFirst(!pantryFirst)}
         />
       </View>
-      <ErrorMessage message={pantry.error || (coverageError ? "Couldn’t check pantry matches. Please try again." : undefined)} />
+      <ErrorMessage
+        message={
+          pantry.error ||
+          (coverageError ? "Couldn’t check pantry matches. Please try again." : undefined)
+        }
+      />
       {!!pantry.error && <Button title="Try again" onPress={pantry.retry} />}
       {selected && (
         <View style={styles.section}>
@@ -186,9 +164,11 @@ export function LibraryScreen() {
               <RecipeCard recipe={recipe} />
               {pantryFirst && (
                 <Body muted>
-                  {!coverage || coverageLoading || coverageError ? "Checking pantry…" : coverage.total
-                    ? `${coverage.present}/${coverage.total} pantry matches`
-                    : "No ingredient list to match"}
+                  {!coverage || coverageLoading || coverageError
+                    ? "Checking pantry…"
+                    : coverage.total
+                      ? `${coverage.present}/${coverage.total} pantry matches`
+                      : "No ingredient list to match"}
                 </Body>
               )}
             </View>

@@ -125,3 +125,12 @@ setup](../README.md#start-local-development) and open `http://localhost:8082/pan
 ## Shared Expo implementation
 
 The Next.js implementation and its original tests are preserved in commit `076f532`; the active product UI is now `apps/mobile/src/features/pantry`. The same screen and recipe controls render on web and native. Regression tests in that folder cover pantry-backed checkboxes, remembered choices, failed writes, portion identity, merge confirmation, Clear/Undo, and selectable copy fallback. The backend and dictionary tests remain intact. The current [verification record](mobile-plan.md) supersedes the older frontend-specific validation above.
+
+## Implementation ownership
+
+`convex/pantry.ts` retains the public query/mutation contract. Its helper modules in
+`convex/pantry/` separate ingredient lookup/aliases, shopping intent, migration and
+rename, recipe matching, and result validators. The Expo `data.ts` owns queries
+and mutations, including batched recipe coverage; views consume those hooks.
+Deleting a recipe removes its local ingredient bindings without deleting pantry
+identities or another recipe's choices.

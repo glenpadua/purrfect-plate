@@ -8,7 +8,14 @@
   "pnpm": {
     "overrides": {
       "cheerio>undici": "7.29.1",
-      "react-native": "0.86.3"
+      "react-native": "0.86.3",
+      "picomatch@>=2.0.0 <2.3.2": "2.3.2",
+      "picomatch@>=4.0.0 <4.0.4": "4.0.4",
+      "brace-expansion@>=5.0.0 <5.0.9": "5.0.9",
+      "js-yaml@>=4.0.0 <4.3.2": "4.3.2",
+      "@babel/core@>=7.0.0 <7.29.6": "7.29.6",
+      "browserslist@>=4.0.0 <4.28.7": "^4.28.7",
+      "baseline-browser-mapping@>=2.0.0 <2.11.0": "2.11.0"
     },
     "onlyBuiltDependencies": [
       "esbuild",
@@ -24,7 +31,7 @@
     "build": "node scripts/build-product-web.mjs && next build",
     "start": "next start",
     "test": "vitest",
-    "test:run": "vitest run --passWithNoTests",
+    "test:run": "vitest run",
     "test:extraction:live": "node scripts/test-extraction-prototype.mjs",
     "test:coverage": "vitest run --coverage",
     "convex:configure": "convex dev --configure",
@@ -38,7 +45,12 @@
     "product:web": "pnpm --filter @purrfect-plate/mobile start --web --localhost --port 8082",
     "server:dev": "next dev --webpack",
     "test:mobile": "pnpm --filter @purrfect-plate/mobile test --runInBand",
-    "typecheck": "next typegen && tsc --noEmit && pnpm mobile:typecheck"
+    "typecheck": "next typegen && tsc --noEmit && pnpm mobile:typecheck",
+    "lint": "eslint app apps/mobile/src convex lib packages scripts --max-warnings 0",
+    "format": "prettier --write \"{app,apps/mobile/src,convex,lib,packages,scripts}/**/*.{ts,tsx,js,mjs,cjs,json}\"",
+    "format:check": "prettier --check \"{app,apps/mobile/src,convex,lib,packages,scripts}/**/*.{ts,tsx,js,mjs,cjs,json}\"",
+    "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:run && pnpm test:mobile",
+    "test:web": "node scripts/smoke-web.mjs"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.9.2",
@@ -53,13 +65,18 @@
   },
   "devDependencies": {
     "@edge-runtime/vm": "^5.0.0",
+    "@eslint/js": "10.0.1",
     "@types/node": "^25.3.3",
     "@types/react": "^19.0.2",
     "@types/react-dom": "19.0.2",
     "@vitest/coverage-v8": "^4.0.18",
     "convex-test": "^0.0.58",
+    "eslint": "10.10.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "prettier": "3.9.6",
     "tsx": "^4.23.13",
     "typescript": "5.7.2",
+    "typescript-eslint": "8.70.0",
     "vite": "7.3.1",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.0.18"

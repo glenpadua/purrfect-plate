@@ -1,5 +1,6 @@
+import { useTask } from "../../hooks/use-task";
 import { useClerk, useUser } from "@clerk/expo";
-import { Body, Button, Page, Title, ErrorMessage, useTask } from "../../ui";
+import { Body, Button, Page, Title, ErrorMessage } from "../../ui";
 export default function Account() {
   const { user } = useUser();
   const { signOut } = useClerk();
@@ -10,13 +11,12 @@ export default function Account() {
       <Body>{user?.fullName || "Signed in"}</Body>
       <Body muted>{user?.primaryEmailAddress?.emailAddress}</Body>
       <Body>
-        Recipes, pantry and shopping are shared with your library. Cooking
-        checklists and serving adjustments stay on this device for the current
-        session.
+        Recipes, pantry and shopping are shared with your library. Cooking checklists and serving
+        adjustments stay on this device for the current session.
       </Body>
       <Body muted>
-        This local development app needs an internet connection. Offline recipe
-        downloads are not available yet.
+        This local development app needs an internet connection. Offline recipe downloads are not
+        available yet.
       </Body>
       <Button
         secondary
