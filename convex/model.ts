@@ -2,11 +2,17 @@ import { v } from "convex/values"
 
 export const recipeLine = v.object({ text: v.string(), group: v.optional(v.string()), sourceIds: v.optional(v.array(v.string())) })
 export const sourcePlatform = v.union(v.literal("instagram"), v.literal("youtube"), v.literal("tiktok"), v.literal("website"))
+export const servingInfo = v.object({ count: v.number(), origin: v.union(v.literal("source"), v.literal("estimated"), v.literal("user")), reason: v.optional(v.string()) })
+export const cookingPreference = v.object({
+  adjustment: v.union(v.object({ mode: v.literal("original") }), v.object({ mode: v.literal("servings"), servings: v.number() }), v.object({ mode: v.literal("ingredient"), ingredientText: v.string(), amount: v.number(), unit: v.string() })),
+  units: v.union(v.literal("original"), v.literal("metric"), v.literal("us")),
+})
 export const recipeContent = {
   name: v.string(), imageStorageId: v.optional(v.id("_storage")), tags: v.array(v.string()), note: v.optional(v.string()),
   ingredients: v.optional(v.array(recipeLine)), instructions: v.optional(v.array(recipeLine)),
   recipeNotes: v.optional(v.array(recipeLine)),
   servings: v.optional(v.string()), prepMinutes: v.optional(v.number()), cookMinutes: v.optional(v.number()),
+  servingInfo: v.optional(servingInfo),
 }
 export const recipeMetadata = {
   importWarnings: v.optional(v.array(v.string())),
@@ -23,6 +29,7 @@ export const importDraft = v.object({
   name: v.string(), tags: v.array(v.string()), ingredients: v.array(recipeLine), instructions: v.array(recipeLine),
   recipeNotes: v.optional(v.array(recipeLine)),
   servings: v.optional(v.string()), prepMinutes: v.optional(v.number()), cookMinutes: v.optional(v.number()), warnings: v.array(v.string()),
+  servingInfo: v.optional(servingInfo),
 })
 
 export const importFailureCode = v.union(v.literal("wrong_link"), v.literal("not_recipe"), v.literal("insufficient"), v.literal("unavailable"))

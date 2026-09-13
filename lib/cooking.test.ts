@@ -22,3 +22,11 @@ test("scales clear ingredient amounts while preserving ambiguous quantities", ()
   expect(servingCount("4–6 servings")).toBeNull()
   expect(servingCount("12 cookies")).toBeNull()
 })
+
+test("the screenshot's half batch scales suffix amounts and both alternative measures", () => {
+  const lines = ["Mutton (or Goat Meat), large pieces with bones- 1 kg", "Basmati Rice- 700 gms (4 US cup measure)", "Ginger Garlic paste- 2 tbsp", "Turmeric Powder- 1/2 tsp", "Onions- 2"]
+  expect(lines.map(text => ingredientForCooking(text, { factor: 0.5, units: "original" }).text)).toEqual([
+    "Mutton (or Goat Meat), large pieces with bones- 500 g", "Basmati Rice- 350 g (2 US cup measure)", "Ginger Garlic paste- 1 tbsp", "Turmeric Powder- ¼ tsp", "Onions- 1",
+  ])
+  for (const text of lines) expect(ingredientForCooking(text, { factor: 1, units: "original" }).text).toBe(text)
+})

@@ -2,14 +2,20 @@ import { useState, type ReactNode } from "react";
 import { Text, View } from "react-native";
 import {
   ingredientForCooking,
-  servingCount,
-  type CookingUnits,
+  cookingFactor,
+  originalCooking,
+  resolveServings,
+  type CookingPreference,
+  type ServingInfo,
   type RecipeLine,
 } from "@purrfect-plate/recipe-core";
 import { Body, Button, Heading, styles } from "../../ui";
+import { ServingControls } from "./serving-controls";
 
 type CookingRecipe = {
+  name?: string;
   servings?: string;
+  servingInfo?: ServingInfo;
   ingredients?: RecipeLine[];
   instructions?: RecipeLine[];
   recipeNotes?: RecipeLine[];
@@ -20,20 +26,35 @@ export function CookingPanel({
   ingredientsIntro,
   ingredientsFooter,
   onCookingChange,
+  preference,
+  onPreferenceChange,
+  onBaseServingsChange,
+  preferencesLoading,
+  persistenceStatus,
 }: {
   recipe: CookingRecipe;
   ingredientControl?: (text: string, displayed: string, index: number) => ReactNode;
   ingredientsIntro?: ReactNode;
   ingredientsFooter?: ReactNode;
   onCookingChange?: (active: boolean) => void;
+  preference?: CookingPreference;
+  onPreferenceChange?: (next: CookingPreference) => void;
+  onBaseServingsChange?: (count: number) => Promise<unknown>;
+  preferencesLoading?: boolean;
+  persistenceStatus?: ReactNode;
 }) {
-  const base = servingCount(recipe.servings);
-  const [servings, setServings] = useState<number | null>(null);
-  const [units, setUnits] = useState<CookingUnits>("original");
+  const info = resolveServings(recipe);
+  const [localPreference, setLocalPreference] = useState<CookingPreference>(originalCooking);
+  const [showOriginal, setShowOriginal] = useState(false);
+  const current = preference ?? localPreference;
+  const factor = cookingFactor(current.adjustment, info?.count ?? null, recipe.ingredients ?? []) ?? 1;
+  const units = current.units;
+  function change(next: CookingPreference) {
+    if (onPreferenceChange) onPreferenceChange(next);
+    else setLocalPreference(next);
+  }
   const [step, setStep] = useState<number | null>(null);
   const [finished, setFinished] = useState(false);
-  const count = servings ?? base;
-  const factor = base && count ? count / base : 1;
   const instructions = recipe.instructions ?? [];
   const currentStep =
     step === null ? null : Math.min(step, Math.max(0, instructions.length - 1));
@@ -44,51 +65,11 @@ export function CookingPanel({
   }
   return (
     <View style={{ gap: 20 }}>
-      <Heading>Make it yours</Heading>
-      {base && count ? (
-        <View style={styles.row}>
-          <Button
-            secondary
-            title="−"
-            accessibilityLabel="Decrease servings"
-            disabled={count <= 1}
-            onPress={() => setServings(count - 1)}
-          />
-          <Body>{count} servings</Body>
-          <Button
-            secondary
-            title="＋"
-            accessibilityLabel="Increase servings"
-            disabled={count >= 100}
-            onPress={() => setServings(count + 1)}
-          />
-        </View>
-      ) : (
-        <Body muted>
-          Servings: {recipe.servings || "Not specified"}. Set a clear serving
-          count when editing to adjust portions.
-        </Body>
-      )}
-      <View style={styles.row}>
-        {(["original", "metric", "us"] as const).map((value) => (
-          <Button
-            key={value}
-            title={
-              value === "us" ? "US" : value === "metric" ? "Metric" : "Original"
-            }
-            secondary={value !== units}
-            onPress={() => setUnits(value)}
-          />
-        ))}
-      </View>
-      {(factor !== 1 || units !== "original") && (
-        <Button secondary title="Reset adjustments" onPress={() => { setServings(null); setUnits("original"); }} />
-      )}
-      <Body muted>
-        Only ingredient amounts change. Times and temperatures stay as written.
-        Check ambiguous amounts yourself.
-      </Body>
+      <ServingControls info={info} sourceServings={recipe.servings} ingredients={recipe.ingredients ?? []}
+        preference={current} onChange={change} onBaseChange={onBaseServingsChange} disabled={preferencesLoading} />
+      {persistenceStatus}
       <Heading>Ingredients</Heading>
+      {(factor !== 1 || units !== "original") && <Button secondary title={showOriginal ? "Hide original amounts" : "Show original amounts"} expanded={showOriginal} onPress={() => setShowOriginal(!showOriginal)} />}
       {ingredientsIntro}
       {(recipe.ingredients ?? []).map((line, i, lines) => {
         const displayed = ingredientForCooking(line.text, { factor, units });
@@ -98,7 +79,7 @@ export function CookingPanel({
               <Heading>{line.group}</Heading>
             )}
             {ingredientControl ? ingredientControl(line.text, displayed.text, i) : <Body>{displayed.text}</Body>}
-            {displayed.text !== line.text && (
+            {showOriginal && displayed.text !== line.text && (
               <Body muted>Original: {line.text}</Body>
             )}
             {displayed.unchanged && (factor !== 1 || units !== "original") && (
@@ -108,6 +89,7 @@ export function CookingPanel({
         );
       })}
       {ingredientsFooter}
+      {factor !== 1 && instructions.length > 0 && <Body muted>Method, times and temperatures are as written. Use the adjusted ingredient amounts above.</Body>}
       {finished && <Body>Cooking finished. Enjoy your meal!</Body>}
       {instructions.length > 0 &&
         (currentStep === null ? (

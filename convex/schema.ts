@@ -1,8 +1,10 @@
 import { defineSchema, defineTable } from "convex/server"
 import { v } from "convex/values"
-import { importFailureCode, importDraft, importStatus, recipeContent, recipeMetadata, sourcePlatform } from "./model"
+import { cookingPreference, importFailureCode, importDraft, importStatus, recipeContent, recipeMetadata, sourcePlatform } from "./model"
 
 export default defineSchema({
+  recipeCookingPreferences: defineTable({ recipeId: v.id("recipes"), userId: v.string(), ...cookingPreference.fields })
+    .index("by_recipe_user", ["recipeId", "userId"]),
   migrationRecords: defineTable({ legacyId: v.string(), recipeId: v.id("recipes") }).index("by_legacy", ["legacyId"]),
   libraries: defineTable({ name: v.string(), slug: v.string(), createdAt: v.number(), pantryVersion: v.optional(v.number()) }).index("by_slug", ["slug"]),
   memberships: defineTable({ libraryId: v.id("libraries"), userId: v.string(), email: v.string(), role: v.union(v.literal("owner"), v.literal("member")), createdAt: v.number() })

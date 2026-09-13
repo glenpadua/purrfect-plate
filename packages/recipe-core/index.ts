@@ -1,6 +1,7 @@
 // Intentional client-safe surface. No React, Next.js, credentials or extraction providers.
-export { ingredientForCooking, servingCount } from "../../lib/cooking";
-export type { CookingUnits } from "../../lib/cooking";
+export { ingredientForCooking, servingCount, parseIngredient, ingredientUnits, ingredientScale, cookingFactor, parseCookingAmount, formatCookingAmount, originalCooking } from "../../lib/cooking";
+export type { CookingUnits, CookingAdjustment, CookingPreference } from "../../lib/cooking";
+export { resolveServings, type ServingInfo } from "../../lib/servings";
 export { recipeLinesFromText, recipeLinesToText } from "../../lib/recipe-lines";
 export type { RecipeLine } from "../../lib/recipe-lines";
 export {

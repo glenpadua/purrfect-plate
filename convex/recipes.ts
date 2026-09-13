@@ -4,10 +4,12 @@ import type { Doc, Id } from "./_generated/dataModel"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
 import { requireMembership } from "./access"
-import { recipeContent, recipeResult } from "./model"
+import { cookingPreference, recipeContent, recipeResult } from "./model"
 import { canonicalizeRecipeTags } from "../lib/recipe-tags"
+import { resolveServings, type ServingInfo } from "../lib/servings"
+import { cookingFactor, servingCount } from "../lib/cooking"
 
-export function cleanContent<T extends { name: string; tags: string[]; note?: string; ingredients?: { text: string; group?: string }[]; instructions?: { text: string; group?: string }[]; recipeNotes?: { text: string; group?: string }[]; servings?: string; prepMinutes?: number; cookMinutes?: number }>(input: T): T {
+export function cleanContent<T extends { name: string; tags: string[]; note?: string; ingredients?: { text: string; group?: string }[]; instructions?: { text: string; group?: string }[]; recipeNotes?: { text: string; group?: string }[]; servings?: string; servingInfo?: ServingInfo; prepMinutes?: number; cookMinutes?: number }>(input: T): T {
   if (!input.name.trim() || input.name.length > 200) throw new ConvexError("Give the recipe a name of up to 200 characters.")
   if (input.tags.length > 20 || input.tags.some(t => t.length > 40)) throw new ConvexError("Use up to 20 short tags.")
   if ((input.note?.length ?? 0) > 5000) throw new ConvexError("Keep notes under 5,000 characters.")
@@ -16,12 +18,13 @@ export function cleanContent<T extends { name: string; tags: string[]; note?: st
     if (lines?.some(l => l.group !== undefined && (!l.group.trim() || l.group.length > 200))) throw new ConvexError("Use group headings of up to 200 characters.")
   }
   if ((input.servings?.length ?? 0) > 100) throw new ConvexError("Keep servings short.")
+  if (input.servingInfo && (!Number.isInteger(input.servingInfo.count) || input.servingInfo.count < 1 || input.servingInfo.count > 100 || (input.servingInfo.reason?.length ?? 0) > 500)) throw new ConvexError("Enter base servings from 1 to 100.")
   for (const minutes of [input.prepMinutes, input.cookMinutes]) if (minutes !== undefined && (!Number.isFinite(minutes) || minutes < 0 || minutes > 10080)) throw new ConvexError("Enter a valid cooking time.")
   return { ...input, name: input.name.trim(), tags: canonicalizeRecipeTags(input.name, input.tags), note: input.note?.trim() || undefined }
 }
 
 async function result(ctx: Pick<QueryCtx, "storage">, recipe: Doc<"recipes">) {
-  return { ...recipe, imageUrl: recipe.imageStorageId ? await ctx.storage.getUrl(recipe.imageStorageId) : null }
+  return { ...recipe, servingInfo: resolveServings(recipe), imageUrl: recipe.imageStorageId ? await ctx.storage.getUrl(recipe.imageStorageId) : null }
 }
 async function owned(ctx: Pick<QueryCtx, "auth" | "db">, id: Id<"recipes">) {
   const member = await requireMembership(ctx)
@@ -83,13 +86,19 @@ export const registerUpload = mutation({ args: { storageId: v.id("_storage") }, 
   return null
 }})
 export const update = mutation({
-  args: { id: v.id("recipes"), name: v.optional(recipeContent.name), imageStorageId: recipeContent.imageStorageId, tags: v.optional(recipeContent.tags), note: recipeContent.note, ingredients: recipeContent.ingredients, instructions: recipeContent.instructions, recipeNotes: recipeContent.recipeNotes, servings: recipeContent.servings, prepMinutes: v.optional(v.union(v.number(), v.null())), cookMinutes: v.optional(v.union(v.number(), v.null())), isFavorite: v.optional(v.boolean()) },
+  args: { id: v.id("recipes"), name: v.optional(recipeContent.name), imageStorageId: recipeContent.imageStorageId, tags: v.optional(recipeContent.tags), note: recipeContent.note, ingredients: recipeContent.ingredients, instructions: recipeContent.instructions, recipeNotes: recipeContent.recipeNotes, servings: recipeContent.servings, servingInfo: recipeContent.servingInfo, prepMinutes: v.optional(v.union(v.number(), v.null())), cookMinutes: v.optional(v.union(v.number(), v.null())), isFavorite: v.optional(v.boolean()) },
   returns: v.null(), handler: async (ctx, { id, ...updates }) => {
     const { recipe, member } = await owned(ctx, id)
     const patch = Object.fromEntries(Object.entries(updates).filter(([, value]) => value !== undefined).map(([key, value]) => [key, value === null ? undefined : value]))
     const cleaned = cleanContent({ ...recipe, ...patch })
     // Apply only requested fields, using the same normalization as creation.
     const normalizedPatch = Object.fromEntries(Object.keys(patch).map(key => [key, cleaned[key as keyof typeof cleaned]]))
+    if (updates.servings !== undefined && updates.servings !== recipe.servings) {
+      const count = servingCount(updates.servings)
+      normalizedPatch.servingInfo = count ? { count, origin: "user" } : undefined
+    } else if (updates.ingredients && (recipe.servingInfo?.origin === "estimated" || updates.servingInfo?.origin === "estimated") && updates.servingInfo?.origin !== "user") {
+      normalizedPatch.servingInfo = undefined // Re-estimate after changing the source quantities.
+    }
     if (updates.imageStorageId && updates.imageStorageId !== recipe.imageStorageId) {
       await consumeUpload(ctx, updates.imageStorageId, member.libraryId, member.userId)
       if (recipe.imageStorageId) await ctx.storage.delete(recipe.imageStorageId)
@@ -116,6 +125,38 @@ export const remove = mutation({ args: { id: v.id("recipes") }, returns: v.null(
     if (job?.recipeId === id) await ctx.db.patch(job._id, { recipeId: undefined, imageStorageId: undefined, status: "needs_review", phase: "Ready to save again", updatedAt: Date.now() })
   }
   if (recipe.imageStorageId) await ctx.storage.delete(recipe.imageStorageId)
+  const preferences = await ctx.db.query("recipeCookingPreferences").withIndex("by_recipe_user", q => q.eq("recipeId", id)).collect()
+  for (const preference of preferences) await ctx.db.delete(preference._id)
   await ctx.db.delete(id)
   return null
 }})
+
+export const setBaseServings = mutation({
+  args: { id: v.id("recipes"), count: v.number() }, returns: v.null(),
+  handler: async (ctx, { id, count }) => {
+    await owned(ctx, id)
+    if (!Number.isInteger(count) || count < 1 || count > 100) throw new ConvexError("Enter base servings from 1 to 100.")
+    await ctx.db.patch(id, { servingInfo: { count, origin: "user" }, editedAt: Date.now(), updatedAt: Date.now() })
+    return null
+  },
+})
+export const getCookingPreference = query({
+  args: { id: v.id("recipes") }, returns: v.union(cookingPreference, v.null()),
+  handler: async (ctx, { id }) => {
+    const { member } = await owned(ctx, id)
+    const pref = await ctx.db.query("recipeCookingPreferences").withIndex("by_recipe_user", q => q.eq("recipeId", id).eq("userId", member.userId)).unique()
+    return pref ? { adjustment: pref.adjustment, units: pref.units } : null
+  },
+})
+export const setCookingPreference = mutation({
+  args: { id: v.id("recipes"), preference: cookingPreference }, returns: v.null(),
+  handler: async (ctx, { id, preference }) => {
+    const { member, recipe } = await owned(ctx, id)
+    const factor = cookingFactor(preference.adjustment, resolveServings(recipe)?.count ?? null, recipe.ingredients ?? [])
+    if (!factor || factor > 100 || factor < 0.001) throw new ConvexError("Choose a valid serving count or ingredient amount.")
+    const pref = await ctx.db.query("recipeCookingPreferences").withIndex("by_recipe_user", q => q.eq("recipeId", id).eq("userId", member.userId)).unique()
+    if (pref) await ctx.db.patch(pref._id, preference)
+    else await ctx.db.insert("recipeCookingPreferences", { recipeId: id, userId: member.userId, ...preference })
+    return null
+  },
+})

@@ -9,6 +9,9 @@ const spec = JSON.parse(execFileSync("pnpm", ["exec", "convex", "function-spec",
 assert.equal(spec.url, "https://spotted-gazelle-950.convex.cloud", "Unexpected production deployment");
 const functions = new Map(spec.functions.map((fn) => [fn.identifier, fn]));
 const required = {
+  "recipes.js:setBaseServings": "Mutation",
+  "recipes.js:getCookingPreference": "Query",
+  "recipes.js:setCookingPreference": "Mutation",
   "pantry.js:initialized": "Query",
   "pantry.js:page": "Query",
   "pantry.js:shopping": "Query",

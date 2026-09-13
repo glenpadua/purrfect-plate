@@ -34,3 +34,12 @@ test("saving an edited recipe preserves unchanged attribution and explicitly cle
     }),
   );
 });
+
+test("correcting an estimated import yield keeps the publisher's serving text", async () => {
+  const save = jest.fn(async (_content: unknown) => {});
+  await render(<RecipeForm initial={{ name: "Rice", tags: [], servings: "4–6 people", servingInfo: { count: 5, origin: "estimated", reason: "Midpoint of the source range." }, ingredients: [{ text: "360 g rice" }] }} onSave={save} />);
+  expect(screen.getByLabelText("Base servings").props.value).toBe("5");
+  await fireEvent.changeText(screen.getByLabelText("Base servings"), "4");
+  await fireEvent.press(screen.getByRole("button", { name: "Save recipe" }));
+  expect(save).toHaveBeenCalledWith(expect.objectContaining({ servings: "4–6 people", servingInfo: { count: 4, origin: "user" }, ingredients: [{ text: "360 g rice" }] }));
+});

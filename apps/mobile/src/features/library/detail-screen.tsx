@@ -14,7 +14,7 @@ import {
   useTask,
 } from "../../ui";
 import { useRecipe, useRecipeActions } from "./data";
-import { PantryCookingPanel } from "../pantry/recipe-pantry";
+import { SavedCookingPanel } from "../cooking/saved-cooking-panel";
 import { SourcePanel } from "../recipe-source/source-panel";
 function KeepAwake() {
   useKeepAwake();
@@ -90,7 +90,7 @@ export function DetailScreen() {
           <ErrorMessage message={task.error} />
         </View>
         <View style={{ flex: 1, width: "100%", gap: 18 }}>
-          <PantryCookingPanel
+          <SavedCookingPanel
             key={recipe._id}
             recipe={recipe}
             onCookingChange={setCooking}

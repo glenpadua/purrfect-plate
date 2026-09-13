@@ -3,6 +3,8 @@ import { View } from "react-native";
 import {
   recipeLinesFromText,
   recipeLinesToText,
+  resolveServings,
+  type ServingInfo,
   type RecipeLine,
 } from "@purrfect-plate/recipe-core";
 import { Body, Button, ErrorMessage, Field, useTask } from "../../ui";
@@ -12,6 +14,7 @@ export type EditableRecipe = {
   tags: string[];
   note?: string;
   servings?: string;
+  servingInfo?: ServingInfo;
   prepMinutes?: number;
   cookMinutes?: number;
   ingredients?: RecipeLine[];
@@ -40,7 +43,8 @@ export function RecipeForm({
   const [name, setName] = useState(initial.name);
   const [tags, setTags] = useState(initial.tags.join(", "));
   const [note, setNote] = useState(initial.note ?? "");
-  const [servings, setServings] = useState(initial.servings ?? "");
+  const initialServingInfo = resolveServings(initial);
+  const [servings, setServings] = useState(initialServingInfo?.count.toString() ?? "");
   const [prep, setPrep] = useState(initial.prepMinutes?.toString() ?? "");
   const [cook, setCook] = useState(initial.cookMinutes?.toString() ?? "");
   const [ingredients, setIngredients] = useState(
@@ -65,11 +69,15 @@ export function RecipeForm({
         onChangeText={setTags}
       />
       <Field
-        label="Servings"
+        label="Base servings"
         value={servings}
         onChangeText={setServings}
-        placeholder="e.g. 4 servings"
+        placeholder="e.g. 4"
+        keyboardType="number-pad"
+        maxLength={3}
       />
+      {initialServingInfo?.origin === "estimated" && <Body muted>Estimated: {initialServingInfo.reason} Change this number to correct it.</Body>}
+      {!!initial.servings && <Body muted>Source servings: {initial.servings}</Body>}
       <Field
         label="Preparation minutes"
         value={prep}
@@ -125,6 +133,9 @@ export function RecipeForm({
                 throw new Error("Enter cooking times as positive minutes.");
               return n;
             };
+            const count = Number(servings);
+            if (!servings.trim() && initialServingInfo) throw new Error("Enter base servings from 1 to 100.");
+            if (servings.trim() && (!/^\d+$/.test(servings.trim()) || count < 1 || count > 100)) throw new Error("Enter base servings from 1 to 100.");
             await onSave({
               name,
               tags: tags
@@ -132,7 +143,8 @@ export function RecipeForm({
                 .map((t) => t.trim())
                 .filter(Boolean),
               note,
-              servings,
+              servings: initial.servings,
+              servingInfo: servings.trim() ? (servings !== initialServingInfo?.count.toString() ? { count, origin: "user" } : initialServingInfo) : undefined,
               prepMinutes: time(prep),
               cookMinutes: time(cook),
               ingredients: recipeLinesFromText(

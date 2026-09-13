@@ -137,6 +137,8 @@ test.each([
   const result = await importRecipe("https://youtube.com/shorts/_qFZJjnN73o", async () => {})
   expect(result.draft.ingredients[0].sourceIds).toEqual(["preflight-transcript"])
   expect(result.draft.servings).toBeUndefined()
+  expect(result.draft.servingInfo).toMatchObject({ count: 4, origin: "estimated" })
+  expect(JSON.parse(result.evidenceJson).servingInfo).toEqual(result.draft.servingInfo)
   expect(result.draft.warnings).toContain("Ingredient amounts were not stated.")
   expect(result.draft.warnings.join(" ")).not.toContain("technique")
 })
