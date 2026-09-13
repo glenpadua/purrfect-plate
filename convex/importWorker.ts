@@ -2,11 +2,13 @@
 
 import { v } from "convex/values"
 import { internalAction } from "./_generated/server"
+import { usesLocalImportWorker } from "./localImportWorker"
 import { api, internal } from "./_generated/api"
 
 export const dispatch = internalAction({
   args: { id: v.id("imports"), attempt: v.number() }, returns: v.null(),
   handler: async (ctx, args) => {
+    if (usesLocalImportWorker()) return null
     if (!await ctx.runMutation(internal.imports.claim, args)) return null
     try {
       const url = process.env.IMPORT_WORKER_URL

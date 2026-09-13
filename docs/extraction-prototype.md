@@ -2,17 +2,17 @@
 
 Question: can the app turn a real Instagram, TikTok, YouTube, or website URL into ingredients and instructions supported by the retrieved source?
 
-This is a local, working integration prototype. The cross-platform part is server-side TypeScript and a JSON API. Expo can call the same service after production authentication and hosting are added. Mobile share extensions are a separate, untested entry mechanism.
+This is the retained local experiment in `lib/extraction-prototype`, accessed through a JSON API and CLI. Its frontend was removed. Current product imports use the separate durable pipeline in `lib/recipe-import`; start with [Development workflow](development.md#extraction-investigations) for that distinction. The dated results below are historical evidence.
 
 ## Run
 
 ```sh
-pnpm dev --hostname 0.0.0.0 --port 3101
+pnpm server:dev --port 3101
 ```
 
-Open http://localhost:3101/extraction-prototype. The library home page also links to it. The existing RECIPE_ALLOWED_HOSTS restriction applies to the API; the prototype is not a public service. No recipes or Convex data are modified.
+Use the CLI below against `http://localhost:3101/api/extraction-prototype`; there is no `/extraction-prototype` product screen. GET reports configuration/recent jobs, POST starts a run, and GET with `?id=...` polls it. The existing `RECIPE_ALLOWED_HOSTS` restriction applies to the API, which is disabled on Vercel. No recipes or Convex data are modified.
 
-Enable the local open-source worker with `node scripts/setup-extraction-worker.mjs` (Python 3.10+ required). It creates the gitignored `.venv-extraction` environment and adds its runtime path as `EXTRACTION_PYTHON` in `.env.local` if unset. The worker retrieves anonymous Instagram video/carousel metadata, TikTok captions/media, and YouTube subtitles/media. It uses no social login cookies. Fresh anonymous media-session cookies stay inside the retrieval pipeline and are scoped to their domain and path on every redirect; they are not included in job evidence. Runtime/download limits and public DNS checks apply. Local speech uses OpenAI; frame observations are kept separate from verified recipe text. Supadata is optional and disabled by default in the UI.
+Enable the local Python retrieval helper with `node scripts/setup-extraction-worker.mjs`. It creates the gitignored `.venv-extraction` environment, installs `scripts/extraction-worker/requirements.txt`, and adds its runtime path as `EXTRACTION_PYTHON` in `.env.local` if unset. Restart the Next server afterward. This is separate from `pnpm import:worker`. The helper retrieves anonymous Instagram video/carousel metadata, TikTok captions/media, and YouTube subtitles/media. It uses no social login cookies. Fresh anonymous media-session cookies stay in the retrieval pipeline and are scoped to their domain and path on every redirect; they are not included in job evidence. Runtime/download limits and public DNS checks apply. Local speech uses OpenAI; frame observations are kept separate from verified recipe text. Supadata is optional and disabled by default in the CLI.
 
 For the optional managed social retrieval path and AI extraction, use these **server-only** settings in `.env.local`:
 
@@ -22,7 +22,7 @@ OPENAI_API_KEY=your-OpenAI-project-key
 RECIPE_EXTRACTION_MODEL=gpt-4.1-mini
 ```
 
-Keep actual keys out of source control, browser fields, and chat. No subscriptions or provider accounts are created by this code. Provider usage consumes your configured account's credits. You can disable the social provider and video transcription independently in Test options. A complete structured website recipe or explicitly formatted caption does not need AI. Partially formatted text may still invoke OpenAI if configured, even with the social provider disabled.
+Keep actual keys out of source control, browser fields, and chat. No subscriptions or provider accounts are created by this code. Provider usage consumes your configured account's credits. The API accepts `useProvider` and `includeTranscript`; the CLI enables transcripts and makes the social provider opt-in with `--provider`. A complete structured website recipe or explicitly formatted caption does not need AI. Partially formatted text may still invoke OpenAI if configured, even with the social provider disabled.
 
 ## What the experiment does
 
@@ -31,13 +31,13 @@ Keep actual keys out of source control, browser fields, and chat. No subscriptio
 3. If enabled/configured, retrieve a full social caption and transcript using Supadata. Video transcription uses `auto`: existing captions, otherwise generated speech transcription. Provider job IDs remain visible while polling.
 4. For provider-returned images/carousels, use OpenAI to transcribe text on up to 10 images. This is OCR-like text reading, not ingredient guessing from food appearance. Preserve image order; the original `img_index` is kept in the input link. OCR accuracy must be checked visually.
 5. Copy explicit caption ingredient/direction sections, or extract verbatim recipe passages with OpenAI Structured Outputs. Reject AI ingredients/steps that do not match their cited source text; missing data remains missing. AI transcription can still be wrong, so quote matching is not a substitute for checking the original audio/image.
-6. Display the recipe, source evidence, stage outcomes, elapsed time, reported provider credits, and AI token usage. Download the full JSON record.
+6. Return the recipe, source evidence, stage outcomes, elapsed time, reported provider credits, and AI token usage as JSON. GET with `?id=...&download=1` downloads the full record.
 
 The local worker processes clips up to ten minutes and 75 MB per downloaded stream, sampling up to 30 frames across the clip at intervals of at least four seconds. Printed text may feed extraction; visual observations appear only as unverified evidence. The prototype does not retrieve comments, private posts, or linked recipes mentioned in a description. It does not follow promotional instructions like “comment RECIPES”. A technique-only clip may correctly produce steps with no ingredient list. Multiple recipes in one page/post require further product decisions; multiple website JSON-LD recipes currently select the first with a warning.
 
 ## Real acceptance checks
 
-The UI includes Glen's three Instagram links and three YouTube Shorts, a public TikTok recipe example, and a RecipeTin Eats recipe page.
+The CLI's default batch includes three Instagram links, three YouTube Shorts, a public TikTok recipe example, and a RecipeTin Eats recipe page.
 
 ```sh
 # Retrieval across all eight cases; exit code 2 means at least one
@@ -73,9 +73,9 @@ The table above records the initial failures, not the current integration status
 
 ## Local prototype limits
 
-- Recent results are grouped by canonical source ID. Earlier test attempts remain available under Run history; they are not separate library recipes.
-- Jobs run in the long-lived Next Node process. They survive closing the page and hot reload, but not a process restart, and are capped at 30 retained runs / three simultaneous imports. This must become a durable job queue before serverless/public deployment.
-- The same-origin LAN request guard is retained. Production mobile needs authenticated API access and per-user authorization; never ship the household server secret in an app.
+- Recent results are grouped by canonical source ID; earlier test attempts remain in the API's history data, separate from library recipes.
+- Jobs run in the long-lived Next Node process. They survive closing the client and hot reload, but not a process restart, and are capped at 30 retained runs / three simultaneous imports. The product's separate Convex queue provides durability; this harness remains local-only.
+- The same-origin LAN request guard is retained. The product instead uses Clerk-authenticated Convex operations and a private worker; server secrets stay outside the client.
 - Transient provider errors are surfaced rather than blindly retried and potentially charged again. An eight-minute provider polling deadline preserves the provider job ID in the report; it does not assert that the external job was cancelled.
 - No library saves, accounts, pantry, nutrition calculations, or cook mode were added.
 - Direct platform access is a measured result for these links and this network, not a promise that every public link works everywhere.

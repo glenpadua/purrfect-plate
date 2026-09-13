@@ -1,5 +1,6 @@
-import { expect, test } from "vitest"
+import { expect, test, vi } from "vitest"
 import { normalizeRecipe, draftFromPassages } from "./normalize"
+import * as providers from "./extraction/providers"
 import { selectablePassages } from "./extraction/providers"
 import type { Evidence } from "./extraction/types"
 
@@ -25,4 +26,17 @@ test("falls back to source wording for unsupported numbers and rejects unknown o
   expect(result.ingredients[0].text).not.toContain("3 eggs")
   expect(result.servings).toBe("Serves two")
   for (const id of ["missing:0", "visual:0"]) expect(() => draftFromPassages({ ...raw, instructions: [{ text: "Bake at 200 degrees.", passageIds: [id] }] }, passages)).toThrow("references")
+})
+
+
+test("a valid instruction supported by more than twelve source passages is accepted", async () => {
+  const source = Array.from({ length: 13 }, (_, i) => ({ id: `source-${i}`, kind: "caption" as const, text: `Add ingredient ${i + 1}.`, via: "Original caption" }))
+  const passages = selectablePassages(source)
+  const response = { name: "Stew", tags: [], servings: null, warnings: [], contentType: "recipe", classificationQuote: "", ingredients: [], instructions: [{ text: "Add the ingredients.", passageIds: passages.map(p => p.id) }] }
+  const mock = vi.spyOn(providers, "openai").mockResolvedValue({ text: JSON.stringify(response), usage: { model: "test", inputTokens: 1, outputTokens: 1 } })
+  try {
+    const result = await normalizeRecipe(source)
+    expect(result.draft.instructions[0].sourceIds).toHaveLength(13)
+    expect(result.draft.instructions[0].text).toBe("Add the ingredients.")
+  } finally { mock.mockRestore() }
 })

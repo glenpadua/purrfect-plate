@@ -1,7 +1,7 @@
-import { ingredientScale, parseIngredient, servingCount } from "./cooking"
+import { ingredientScale, parseIngredient, servingCount, type IngredientLine } from "./cooking"
 
 export type ServingInfo = { count: number; origin: "source" | "estimated" | "user"; reason?: string }
-type RecipeYield = { name?: string; servings?: string; servingInfo?: ServingInfo; ingredients?: { text: string }[] }
+type RecipeYield = { name?: string; servings?: string; servingInfo?: ServingInfo; ingredients?: IngredientLine[] }
 
 /** A deliberately approximate cooking aid, never a nutrition claim or source fact.
  * Shared by imports and reads of old recipes, so estimates need no migration or API call. */
@@ -13,12 +13,12 @@ export function resolveServings(recipe: RecipeYield): ServingInfo | undefined {
   if (range && +range[1] > 0 && +range[2] >= +range[1] && +range[2] <= 100) return { count: Math.round((+range[1] + +range[2]) / 2), origin: "estimated", reason: `Midpoint of the source’s ${recipe.servings}.` }
   const candidates: { count: number; label: string; priority: number }[] = []
   for (const line of recipe.ingredients ?? []) {
-    const parsed = parseIngredient(line.text)
+    const parsed = parseIngredient(line)
     if (!parsed) continue
     const label = parsed.label.toLowerCase()
     // Avoid treating spice mixes, starch, stock, sauces or cooked leftovers as a main.
     if (/\b(stock|broth|sauce|paste|powder|starch|cooked|leftover)\b/.test(label)) continue
-    const gramsFactor = ingredientScale(line.text, 100, "g")
+    const gramsFactor = ingredientScale(line, 100, "g")
     const grams = gramsFactor ? 100 / gramsFactor : null
     let perPortion: number | undefined
     let priority = 1

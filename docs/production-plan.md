@@ -63,7 +63,7 @@ The feature code and tests are organized around authenticated data operations, e
 - Test both actual iPhones. Desktop browser or emulator results are not physical-device evidence.
 - Broaden fresh TikTok normalization coverage without a draft repair.
 - Broaden unavailable-source and platform coverage; current YouTube and embed success is sample-specific.
-- Configure a reachable development import worker. Development Convex currently points at the production worker, which cannot resolve development job IDs; development CRUD is usable, development imports are not accepted.
+- Verify development imports with the outbound local worker and synced development backend described in [the setup guide](../README.md#start-local-development). The implementation replaces the earlier misconfigured hosted-worker/tunnel path; this release record does not establish a fresh local import acceptance.
 - Address the launch constraints recorded in architecture.md: library pagination, orphaned-image cleanup, dependency advisories, production Clerk setup and wider operational monitoring.
 - Complete physical-device Expo acceptance; photo/voice pantry updates remain future work.
 

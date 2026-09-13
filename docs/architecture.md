@@ -4,25 +4,7 @@ Start with [How the app works](how-the-app-works.md) for the plain-language expl
 
 ## Boundaries
 
-| Area | Owns |
-| --- | --- |
-| `app/api` | Server-only import worker, compatibility recipe endpoints and local extraction API |
-| `apps/mobile/src/app` | The only product router, authentication gate and navigation |
-| `apps/mobile/src/features/library` | Library screen, browsing state, data access and surprise picker |
-| `apps/mobile/src/features/recipe-editor`, `apps/mobile/src/features/recipe-import` | Recipe UI and draft review |
-| `convex/access.ts`, `libraries.ts` | Verified-email invitation and membership |
-| `convex/recipes.ts` | Authenticated CRUD and photo ownership |
-| `convex/imports.ts`, `importWorker.ts` | Durable jobs, quota, deduplication and scheduling |
-| `lib/recipe-import/service.ts` | URL-to-draft orchestration |
-| `lib/recipe-import/extraction` | URL safety, page parsing and AI provider helpers |
-| `lib/recipe-import/normalize.ts` | Publisher recipe preservation and passage-backed AI normalization |
-| `lib/recipe-import/images.ts` | Shared image storage policy |
-| `lib/cooking.ts` | Pure serving and same-dimension unit display transformations |
-| `apps/mobile/src/features/cooking` | Portion/unit adjustments and session-only step navigation |
-| `apps/mobile/src/features/pantry`, `convex/pantry.ts`, `lib/pantry.ts` | Shared ingredient presence, aliases, recipe bindings and independent shopping intent |
-| `apps/mobile/src/features/recipe-source` | Validated, tap-to-load source players and attribution |
-| `lib/recipe-lines.ts` | Shared grouped-text editing without losing unchanged provenance |
-| `services/media` | Replaceable Python caption/audio/frame service |
+The root [feature map](../AGENTS.md#find-the-change) owns task-to-module navigation. This document owns the contracts between those modules; [Development workflow](development.md) owns runtime and validation choices.
 
 ## API and data
 
@@ -60,7 +42,7 @@ The catalogue migration was additive: production table IDs differed from develop
 
 Use the actual assigned Vercel host, `purrfect-plate-theta.vercel.app`, for worker URL and upload-host validation. Set Vercel environment values with explicit `--project` selection. Deploy Convex schema/functions before clients that require them. Root and `services/media` have separate ignored Vercel project links.
 
-Development imports need a separate reachable worker configured for development Convex. A production worker cannot resolve development job IDs. The local library's normal CRUD uses development Convex; use the hosted app for production import acceptance.
+Development imports use `scripts/dev-import-worker.ts` to claim jobs through `convex/localImportWorker.ts` and invoke the Next worker handler in-process. This path is restricted to `basic-poodle-462`; `convex/importWorker.ts` skips hosted dispatch there. It needs a matching worker secret but no `IMPORT_WORKER_URL`, Next listener or tunnel. Follow [README setup](../README.md#start-local-development) for startup and restart behavior. Production retains the hosted dispatch path described above; its worker cannot resolve development job IDs.
 
 ## Open launch work
 
@@ -77,7 +59,7 @@ The acceptance checklist lives in `production-plan.md`. Tests and a successful d
 
 ## Cooking and extension seams
 
-The recipe detail screen delegates to `PantryCookingPanel`, which supplies shared pantry controls to the reusable `CookingPanel`. Cooking adjustments never write quantities back to Convex. `ingredientForCooking` is the client-safe pure interface for serving and unit display; both web and native render its result through the same component. Ambiguous ranges, package quantities and unspecified volume conventions stay as written. The original method and source amounts remain available. See [cooking behavior](cooking.md) and [pantry semantics](pantry.md).
+The recipe detail screen uses `SavedCookingPanel` to persist each user's portion/unit preference, then `PantryCookingPanel` supplies shared pantry controls to `CookingPanel`. Display transformations preserve source amounts; base-serving corrections are shared recipe data. `ingredientForCooking` is the client-safe pure display interface, and structured quantities retain their source text separately from scaling corrections. See [cooking behavior](cooking.md) for supported amounts, persistence and test seams, and [pantry semantics](pantry.md) for checkboxes.
 
 Keep retrieval, normalization, image processing, durable job state and presentation separate. Add a provider behind the retrieval boundary rather than branching by provider in route components. Prefer explicit domain interfaces over generic service/repository layers. Tests call the same parser, authenticated mutations and UI controls that production uses; add a failing behavior test at those seams before each functional change. Do not mock internal helpers just to mirror their implementation.
 

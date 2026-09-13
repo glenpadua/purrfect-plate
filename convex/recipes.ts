@@ -7,9 +7,9 @@ import { requireMembership } from "./access"
 import { cookingPreference, recipeContent, recipeResult } from "./model"
 import { canonicalizeRecipeTags } from "../lib/recipe-tags"
 import { resolveServings, type ServingInfo } from "../lib/servings"
-import { cookingFactor, servingCount } from "../lib/cooking"
+import { cookingFactor, servingCount, withIngredientQuantity, ingredientQuantity, type IngredientLine } from "../lib/cooking"
 
-export function cleanContent<T extends { name: string; tags: string[]; note?: string; ingredients?: { text: string; group?: string }[]; instructions?: { text: string; group?: string }[]; recipeNotes?: { text: string; group?: string }[]; servings?: string; servingInfo?: ServingInfo; prepMinutes?: number; cookMinutes?: number }>(input: T): T {
+export function cleanContent<T extends { name: string; tags: string[]; note?: string; ingredients?: (IngredientLine & { group?: string })[]; instructions?: { text: string; group?: string }[]; recipeNotes?: { text: string; group?: string }[]; servings?: string; servingInfo?: ServingInfo; prepMinutes?: number; cookMinutes?: number }>(input: T): T {
   if (!input.name.trim() || input.name.length > 200) throw new ConvexError("Give the recipe a name of up to 200 characters.")
   if (input.tags.length > 20 || input.tags.some(t => t.length > 40)) throw new ConvexError("Use up to 20 short tags.")
   if ((input.note?.length ?? 0) > 5000) throw new ConvexError("Keep notes under 5,000 characters.")
@@ -20,11 +20,12 @@ export function cleanContent<T extends { name: string; tags: string[]; note?: st
   if ((input.servings?.length ?? 0) > 100) throw new ConvexError("Keep servings short.")
   if (input.servingInfo && (!Number.isInteger(input.servingInfo.count) || input.servingInfo.count < 1 || input.servingInfo.count > 100 || (input.servingInfo.reason?.length ?? 0) > 500)) throw new ConvexError("Enter base servings from 1 to 100.")
   for (const minutes of [input.prepMinutes, input.cookMinutes]) if (minutes !== undefined && (!Number.isFinite(minutes) || minutes < 0 || minutes > 10080)) throw new ConvexError("Enter a valid cooking time.")
-  return { ...input, name: input.name.trim(), tags: canonicalizeRecipeTags(input.name, input.tags), note: input.note?.trim() || undefined }
+  if (input.ingredients?.some(line => (line.quantity?.scalingText?.length ?? 0) > 3000)) throw new ConvexError("Keep ingredient corrections under 3,000 characters.")
+  return { ...input, ...(input.ingredients ? { ingredients: input.ingredients.map(withIngredientQuantity) } : {}), name: input.name.trim(), tags: canonicalizeRecipeTags(input.name, input.tags), note: input.note?.trim() || undefined }
 }
 
 async function result(ctx: Pick<QueryCtx, "storage">, recipe: Doc<"recipes">) {
-  return { ...recipe, servingInfo: resolveServings(recipe), imageUrl: recipe.imageStorageId ? await ctx.storage.getUrl(recipe.imageStorageId) : null }
+  return { ...recipe, ingredients: recipe.ingredients?.map(line => ({ ...line, quantity: ingredientQuantity(line) })), servingInfo: resolveServings(recipe), imageUrl: recipe.imageStorageId ? await ctx.storage.getUrl(recipe.imageStorageId) : null }
 }
 async function owned(ctx: Pick<QueryCtx, "auth" | "db">, id: Id<"recipes">) {
   const member = await requireMembership(ctx)

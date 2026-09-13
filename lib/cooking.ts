@@ -36,60 +36,120 @@ export function servingCount(value?: string): number | null {
   const count = match ? Number(match[1]) : 0
   return count > 0 && count <= 100 ? count : null
 }
-type Quantity = { amount: number; unit: string; tail: string }
-export type ParsedIngredient = Quantity & { prefix: string; label: string; alternate?: Quantity }
+export type Quantity = { amount: number; maximum?: number; approximate?: string; unit: string; tail: string }
+export type ParsedIngredient = Quantity & { prefix: string; label: string; alternate?: Quantity; additions?: Quantity[] }
 function quantity(text: string): Quantity | null {
-  const match = numberPattern.exec(text)
+  const approximate = /^(?:about|around|approximately|approx\.?|~|≈)\s*/i.exec(text)?.[0]
+  const value = text.slice(approximate?.length ?? 0)
+  const match = numberPattern.exec(value)
   if (!match) return null
   const amount = parseCookingAmount(match[0])
-  const rest = text.slice(match[0].length).trimStart()
+  let rest = value.slice(match[0].length).trimStart()
+  let maximum: number | undefined
+  const range = /^(?:[-–—]|to)\s*/i.exec(rest)
+  if (range) {
+    const end = numberPattern.exec(rest.slice(range[0].length))
+    const upper = end && parseCookingAmount(end[0])
+    if (!upper || !amount || upper < amount) return null
+    maximum = upper
+    rest = rest.slice(range[0].length + end![0].length).trimStart()
+  }
   if (!amount || /^[-–—x×/\d]/i.test(rest)) return null
   const unit = unitPattern.exec(rest)?.[0] ?? ""
-  if (!unit && /^(?:inches|inch|cm|mm|degrees?|°|%)\b/i.test(rest)) return null
-  return { amount, unit, tail: rest.slice(unit.length) }
+  if (/^[%°]/.test(rest)) return null
+  if (!unit && /^(?:inches|inch|cm|mm|degrees?|°|%|UK|metric|US)\b/i.test(rest)) return null
+  return { amount, ...(maximum !== undefined ? { maximum } : {}), ...(approximate ? { approximate } : {}), unit, tail: rest.slice(unit.length) }
 }
-/** Only a clear quantity, or an explicitly parenthesized alternative measure.
- * Package sizes, ranges, dimensions and instruction-like lines stay untouched. */
-export function parseIngredient(text: string): ParsedIngredient | null {
-  const normalized = normalize(text.trim())
-  const start = normalized.search(/\d/)
-  if (start < 0) return null
+/** Extract only quantities that can be tied to this ingredient. Package sizes,
+ * dimensions and multiple independent amounts require review. */
+export function parseIngredient(input: string | IngredientLine): ParsedIngredient | null {
+  if (typeof input !== "string") return ingredientQuantity(input).parsed ?? null
+  const normalized = normalize(input.trim())
+  const parts = normalized.split(/\s+\+\s+/)
+  if (parts.length > 1) {
+    const main = parseIngredient(parts[0])
+    const additions = parts.slice(1).map(quantity)
+    if (!main || additions.some(q => !q || /[\d×+()]/.test(q.tail) || !q.tail.trim())) return null
+    return { ...main, additions: additions as Quantity[] }
+  }
+  const numberStart = normalized.search(/\d/)
+  if (numberStart < 0) return null
+  const before = normalized.slice(0, numberStart)
+  const approximate = /(?:about|around|approximately|approx\.?|~|≈)\s*$/i.exec(before)
+  const start = approximate ? numberStart - approximate[0].length : numberStart
   const prefix = normalized.slice(0, start)
   if (prefix && !/[-–—:]\s*$/.test(prefix)) return null
   const main = quantity(normalized.slice(start))
-  if (!main || (prefix && !main.unit && main.tail.trim()) || (!prefix && !main.tail.trim())) return null
+  if (!main || (!prefix && !main.tail.trim())) return null
   let alternate: Quantity | undefined
   if (/\d/.test(main.tail)) {
-    const alt = /^\s*\(([^()]+)\)\s*$/.exec(main.tail)
-    const parsed = alt && quantity(alt[1])
-    if (!main.unit || !parsed?.unit || !/^(?:\s+measure)?\s*$/i.test(parsed.tail)) return null
+    const alt = /^(.*?)\s*\(([^()]+)\)\s*$/.exec(main.tail)
+    const parsed = alt && quantity(alt[2])
+    if (!parsed?.unit || !/^(?:\s+measure)?\s*$/i.test(parsed.tail)) return null
+    // "5 medium onions (400 g)" is an alternate total; a can's weight is not.
+    if (/\b(cans?|tins?|packets?|packs?|packages?|bottles?|jars?)\b/i.test(alt![1])) return null
     alternate = parsed
-    main.tail = ""
+    main.tail = alt![1]
   }
   if (/\d|[×]/.test(main.tail) || /^\s*(?:x\b|[-–—]|\/)/i.test(main.tail)) return null
+  if (prefix && !main.unit && !/^\s*(?:(?:small|medium|large)\s*)?(?:numbers?|nos?\.?|pieces?|items?|leaves|pods?|sticks?)?\s*(?:(?:to be|for)\b.*|,.*)?$/i.test(main.tail)) return null
   const label = (prefix ? prefix.replace(/\s*[-–—:]\s*$/, "") : main.tail).trim()
   if (!label) return null
-  return { ...main, prefix, label, alternate }
+  return { ...main, prefix, label, ...(alternate ? { alternate } : {}) }
+}
+
+export type IngredientQuantity = {
+  version: 1; sourceText: string; status: "scalable" | "unmeasured" | "review";
+  scalingText?: string; parsed?: ParsedIngredient;
+}
+export type IngredientLine = { text: string; quantity?: IngredientQuantity }
+/** Rebuilt on writes; sourceText prevents stale measurements after text edits. */
+export function extractIngredientQuantity(text: string, scalingText?: string): IngredientQuantity {
+  const effective = scalingText?.trim() || text
+  const parsed = parseIngredient(effective)
+  const unmeasured = !/\d/.test(effective) && /\b(to taste|as needed|as required)\b/i.test(effective)
+  return { version: 1, sourceText: text, status: parsed ? "scalable" : unmeasured ? "unmeasured" : "review",
+    ...(scalingText?.trim() && scalingText.trim() !== text ? { scalingText: scalingText.trim() } : {}), ...(parsed ? { parsed } : {}) }
+}
+export function ingredientQuantity(line: IngredientLine): IngredientQuantity {
+  return line.quantity?.version === 1 && line.quantity.sourceText === line.text
+    ? line.quantity : extractIngredientQuantity(line.text)
+}
+export function withIngredientQuantity<T extends IngredientLine>(line: T): T & { quantity: IngredientQuantity } {
+  const correction = line.quantity?.sourceText === line.text ? line.quantity.scalingText : undefined
+  return { ...line, quantity: extractIngredientQuantity(line.text, correction) }
 }
 export function ingredientUnits(parsed: ParsedIngredient): string[] {
   const unit = units[parsed.unit.toLowerCase()]
-  return unit?.dimension === "mass" ? ["g", "kg", "oz", "lb"] : unit?.dimension === "volume" ? ["mL", "L", "US cups", "US tbsp", "US tsp"] : [parsed.unit || "items"]
+  const primary = unit?.dimension === "mass" ? ["g", "kg", "oz", "lb"] : unit?.dimension === "volume" ? ["mL", "L", "US cups", "US tbsp", "US tsp"] : [parsed.unit || "items"]
+  const alternate = parsed.alternate && units[parsed.alternate.unit.toLowerCase()]
+  return [...new Set([...primary, ...(alternate?.dimension === "mass" ? ["g", "kg", "oz", "lb"] : alternate?.dimension === "volume" ? ["mL", "L", "US cups", "US tbsp", "US tsp"] : [])])]
 }
-export function ingredientScale(text: string, amount: number, targetUnit: string): number | null {
+export function ingredientScale(text: string | IngredientLine, amount: number, targetUnit: string): number | null {
   const parsed = parseIngredient(text)
-  if (!parsed || !Number.isFinite(amount) || amount <= 0) return null
-  const from = units[parsed.unit.toLowerCase()]
+  if (!parsed || parsed.additions?.length || parsed.maximum !== undefined || !Number.isFinite(amount) || amount <= 0) return null
   const to = units[targetUnit.toLowerCase()]
-  const factor = from && to && from.dimension === to.dimension ? amount * to.factor / (parsed.amount * from.factor)
-    : targetUnit.toLowerCase() === (parsed.unit || "items").toLowerCase() ? amount / parsed.amount : null
+  const measure = [parsed, ...(parsed.alternate ? [parsed.alternate] : [])].find(q => {
+    const from = units[q.unit.toLowerCase()]
+    return q.maximum === undefined && ((from && to && from.dimension === to.dimension) || targetUnit.toLowerCase() === (q.unit || "items").toLowerCase())
+  })
+  if (!measure) return null
+  const from = units[measure.unit.toLowerCase()]
+  const factor = from && to && from.dimension === to.dimension ? amount * to.factor / (measure.amount * from.factor) : amount / measure.amount
   return factor && Number.isFinite(factor) && factor >= 0.001 && factor <= 100 ? factor : null
 }
-export function cookingFactor(adjustment: CookingAdjustment, base: number | null, ingredients: { text: string }[]): number | null {
+export function cookingFactor(adjustment: CookingAdjustment, base: number | null, ingredients: IngredientLine[]): number | null {
   if (adjustment.mode === "original") return 1
   if (adjustment.mode === "servings") return base && Number.isFinite(adjustment.servings) && adjustment.servings > 0 && adjustment.servings <= base * 100 ? adjustment.servings / base : null
-  return ingredients.some(line => line.text === adjustment.ingredientText) ? ingredientScale(adjustment.ingredientText, adjustment.amount, adjustment.unit) : null
+  const line = ingredients.find(line => line.text === adjustment.ingredientText)
+  return line ? ingredientScale(line, adjustment.amount, adjustment.unit) : null
 }
 function displayQuantity(q: Quantity, factor: number, system: CookingUnits): string | null {
+  if (q.maximum !== undefined) {
+    const lower = displayQuantity({ ...q, maximum: undefined, tail: "" }, factor, system)
+    const upper = displayQuantity({ ...q, amount: q.maximum, maximum: undefined, approximate: undefined }, factor, system)
+    return lower && upper ? `${lower}–${upper}` : null
+  }
   let amount = q.amount * factor
   let label = q.unit
   if (/^gms?$/i.test(label)) label = "g"
@@ -106,17 +166,20 @@ function displayQuantity(q: Quantity, factor: number, system: CookingUnits): str
   }
   if (amount < 0.01 || !Number.isFinite(amount)) return null
   const formatted = approximate ? Number(amount.toFixed(2)).toString() : formatCookingAmount(amount)
-  return `${approximate ? "≈ " : ""}${formatted}${label ? ` ${label}` : ""}${q.tail ? `${label || /^\s/.test(q.tail) ? "" : " "}${q.tail}` : ""}`
+  return `${q.approximate ?? ""}${approximate ? "≈ " : ""}${formatted}${label ? ` ${label}` : ""}${q.tail ? `${label || /^\s/.test(q.tail) ? "" : " "}${q.tail}` : ""}`
 }
-export function ingredientForCooking(text: string, options: { factor: number; units: CookingUnits }): { text: string; unchanged: boolean } {
+export function ingredientForCooking(input: string | IngredientLine, options: { factor: number; units: CookingUnits }): { text: string; unchanged: boolean } {
+  const line = typeof input === "string" ? { text: input } : input
+  const text = ingredientQuantity(line).scalingText ?? line.text
   const unchanged = { text, unchanged: true }
   if (!Number.isFinite(options.factor) || options.factor <= 0 || options.factor > 100) return unchanged
-  const parsed = parseIngredient(text)
+  const parsed = parseIngredient(line)
   if (!parsed) return unchanged
   if (options.factor === 1 && options.units === "original") return { text, unchanged: false }
   if (options.factor === 1 && options.units !== "original" && !units[parsed.unit.toLowerCase()]) return unchanged
   const main = displayQuantity(parsed, options.factor, options.units)
   const alt = parsed.alternate && displayQuantity(parsed.alternate, options.factor, "original")
-  if (!main || (parsed.alternate && !alt)) return unchanged
-  return { text: `${parsed.prefix}${main}${alt ? ` (${alt})` : ""}`, unchanged: false }
+  const additions = parsed.additions?.map(q => displayQuantity(q, options.factor, options.units)) ?? []
+  if (!main || (parsed.alternate && !alt) || additions.some(q => !q)) return unchanged
+  return { text: `${parsed.prefix}${main}${alt ? ` (${alt})` : ""}${additions.map(q => ` + ${q}`).join("")}`, unchanged: false }
 }

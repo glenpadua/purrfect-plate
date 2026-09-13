@@ -43,3 +43,15 @@ test("correcting an estimated import yield keeps the publisher's serving text", 
   await fireEvent.press(screen.getByRole("button", { name: "Save recipe" }));
   expect(save).toHaveBeenCalledWith(expect.objectContaining({ servings: "4–6 people", servingInfo: { count: 4, origin: "user" }, ingredients: [{ text: "360 g rice" }] }));
 });
+
+test("quantity review previews corrections and saves them separately from source text", async () => {
+  const save = jest.fn(async (_content: unknown) => {});
+  await render(<RecipeForm initial={{ name: "Onions", tags: [], ingredients: [{ text: "Juice of 2 lemons", sourceIds: ["publisher"] }] }} onSave={save} />);
+  await fireEvent.press(screen.getByRole("button", { name: "Review amounts" }));
+  expect(screen.getByText("Check amount — this line will not scale yet.")).toBeTruthy();
+  await fireEvent.press(screen.getByRole("button", { name: "Correct amount 1" }));
+  await fireEvent.changeText(screen.getByLabelText("Ingredient with amount 1"), "2 lemons, juiced");
+  expect(screen.getByText("Half batch: 1 lemons, juiced")).toBeTruthy();
+  await fireEvent.press(screen.getByRole("button", { name: "Save recipe" }));
+  expect(save).toHaveBeenCalledWith(expect.objectContaining({ ingredients: [expect.objectContaining({ text: "Juice of 2 lemons", sourceIds: ["publisher"], quantity: expect.objectContaining({ status: "scalable", scalingText: "2 lemons, juiced" }) })] }));
+});

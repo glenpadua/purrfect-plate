@@ -1,5 +1,6 @@
 /** Client-safe text editing shared by manual recipes and import review. */
-export type RecipeLine = { text: string; group?: string; sourceIds?: string[] }
+import type { IngredientQuantity } from "./cooking"
+export type RecipeLine = { quantity?: IngredientQuantity; text: string; group?: string; sourceIds?: string[] }
 const singleLine = (text: string) => text.replace(/\s+/g, " ").trim()
 
 export function recipeLinesToText(lines: RecipeLine[] = []) {

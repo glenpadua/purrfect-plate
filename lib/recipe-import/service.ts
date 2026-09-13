@@ -10,6 +10,7 @@ import { checkImportTarget, ImportSourceError } from "./guardrails"
 import { preflightRecipe } from "./preflight"
 import { recipeFromCaption } from "./extraction/parse"
 import { z } from "zod"
+import { withIngredientQuantity } from "../cooking"
 import { resolveServings } from "../servings"
 
 const metadataSchema = z.object({ title: z.string().max(1000).nullish(), caption: z.string().max(100000).optional(), transcript: z.string().max(100000).optional(), duration: z.number().nullish() })
@@ -150,6 +151,6 @@ export async function importRecipe(url: string, progress: (phase: string) => Pro
     try { image = await retrieveRecipeImage(sourceImageUrl, AbortSignal.timeout(budget(15000))) } catch { warnings.push("The source cover was unavailable; a video frame or placeholder is used.") }
   }
   result.draft.warnings = [...new Set([...result.draft.warnings, ...warnings])].slice(0, 20)
-  const draft = { ...result.draft, servingInfo: resolveServings(result.draft) }
+  const draft = { ...result.draft, ingredients: result.draft.ingredients.map(withIngredientQuantity), servingInfo: resolveServings(result.draft) }
   return { draft, image, author, evidenceJson: JSON.stringify({ version: 1, url, finalUrl, platform, extractedAt: new Date().toISOString(), evidence, citations: result.citations, usage: result.usage, mediaUsage, preflight, warnings, servingInfo: draft.servingInfo }) }
 }

@@ -56,3 +56,7 @@ apps/mobile/dist/
 
 apps/mobile/dist-web/
 /public/universal/
+
+# Public configuration templates contain no credentials
+!/.env.local.example
+!/apps/mobile/.env.local.example

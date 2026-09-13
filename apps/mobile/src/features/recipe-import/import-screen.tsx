@@ -121,8 +121,7 @@ export function ImportReviewScreen() {
         <>
           <Loading />
           <Body muted>
-            You can return to the library. This import will keep running on the
-            server.
+            You can return to the library. This import will keep running.
           </Body>
         </>
       ) : null}

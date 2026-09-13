@@ -117,10 +117,9 @@ old-name search, merge preview/cancel, clipboard contents, removal/Undo,
 clear/Undo, and recipe confirmation followed by adding missing ingredients.
 Desktop and a 390px mobile viewport were inspected; no physical phone was tested.
 
-For this local Clerk setup, run `pnpm dev --hostname localhost --port 3000` and
-open `http://localhost:3000/pantry`. Binding only to `127.0.0.1` caused protected
-route requests to stall during this check. This is a development preview, not a
-production release.
+That check used the retired Next.js UI on port 3000 and encountered a
+Clerk/loopback binding issue. For the current Expo pantry, follow [development
+setup](../README.md#start-local-development) and open `http://localhost:8082/pantry`.
 
 
 ## Shared Expo implementation

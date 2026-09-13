@@ -72,7 +72,7 @@ export function CookingPanel({
       {(factor !== 1 || units !== "original") && <Button secondary title={showOriginal ? "Hide original amounts" : "Show original amounts"} expanded={showOriginal} onPress={() => setShowOriginal(!showOriginal)} />}
       {ingredientsIntro}
       {(recipe.ingredients ?? []).map((line, i, lines) => {
-        const displayed = ingredientForCooking(line.text, { factor, units });
+        const displayed = ingredientForCooking(line, { factor, units });
         return (
           <View key={`${i}:${line.text}`} style={{ gap: 7 }}>
             {line.group && line.group !== lines[i - 1]?.group && (

@@ -12,9 +12,11 @@ import type * as access from "../access.js";
 import type * as importWorker from "../importWorker.js";
 import type * as imports from "../imports.js";
 import type * as libraries from "../libraries.js";
+import type * as localImportWorker from "../localImportWorker.js";
 import type * as migrations from "../migrations.js";
 import type * as model from "../model.js";
 import type * as pantry from "../pantry.js";
+import type * as quantityMaintenance from "../quantityMaintenance.js";
 import type * as recipes from "../recipes.js";
 import type * as tagMaintenance from "../tagMaintenance.js";
 
@@ -29,9 +31,11 @@ declare const fullApi: ApiFromModules<{
   importWorker: typeof importWorker;
   imports: typeof imports;
   libraries: typeof libraries;
+  localImportWorker: typeof localImportWorker;
   migrations: typeof migrations;
   model: typeof model;
   pantry: typeof pantry;
+  quantityMaintenance: typeof quantityMaintenance;
   recipes: typeof recipes;
   tagMaintenance: typeof tagMaintenance;
 }>;

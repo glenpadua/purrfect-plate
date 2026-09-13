@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { View } from "react-native";
 import {
+  extractIngredientQuantity,
   recipeLinesFromText,
   recipeLinesToText,
   resolveServings,
   type ServingInfo,
   type RecipeLine,
 } from "@purrfect-plate/recipe-core";
+import { QuantityReview } from "./quantity-review";
 import { Body, Button, ErrorMessage, Field, useTask } from "../../ui";
 
 export type EditableRecipe = {
@@ -54,6 +56,11 @@ export function RecipeForm({
     recipeLinesToText(initial.instructions),
   );
   const [notes, setNotes] = useState(recipeLinesToText(initial.recipeNotes));
+  const [corrections, setCorrections] = useState<Record<string, string>>({});
+  const ingredientLines = recipeLinesFromText(ingredients, initial.ingredients).map((line, index) => {
+    const correction = corrections[JSON.stringify([index, line.text, line.group])];
+    return correction === undefined ? line : { ...line, quantity: extractIngredientQuantity(line.text, correction) };
+  });
   const task = useTask();
   return (
     <View style={{ gap: 18 }}>
@@ -100,6 +107,10 @@ export function RecipeForm({
         value={ingredients}
         onChangeText={setIngredients}
       />
+      <QuantityReview lines={ingredientLines} onCorrection={(index, text) => {
+        const line = ingredientLines[index];
+        setCorrections(previous => ({ ...previous, [JSON.stringify([index, line.text, line.group])]: text }));
+      }} />
       <Field
         multiline
         label="Method"
@@ -147,10 +158,7 @@ export function RecipeForm({
               servingInfo: servings.trim() ? (servings !== initialServingInfo?.count.toString() ? { count, origin: "user" } : initialServingInfo) : undefined,
               prepMinutes: time(prep),
               cookMinutes: time(cook),
-              ingredients: recipeLinesFromText(
-                ingredients,
-                initial.ingredients,
-              ),
+              ingredients: ingredientLines,
               instructions: recipeLinesFromText(
                 instructions,
                 initial.instructions,

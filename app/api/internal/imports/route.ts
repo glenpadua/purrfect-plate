@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     await client.mutation(api.imports.workerFinish, { ...args, draft: result.draft, evidenceJson: result.evidenceJson, author: result.author, imageStorageId })
     return Response.json({ status: "needs_review" })
   } catch (error) {
-    const message = error instanceof ImportSourceError ? error.message : error instanceof Error && /source|recipe information|link/i.test(error.message) ? error.message.slice(0, 300) : "The recipe could not be imported. Check the link and try again."
+    const message = error instanceof z.ZodError ? "We read the source, but could not organise it into a valid recipe. Try importing again." : error instanceof ImportSourceError ? error.message : error instanceof Error && /source|recipe information|link/i.test(error.message) ? error.message.slice(0, 300) : "The recipe could not be imported. Check the link and try again."
     await client.mutation(api.imports.workerFinish, { ...args, error: message, ...(error instanceof ImportSourceError ? { failureCode: error.code, ...(error.audit ? { evidenceJson: JSON.stringify(error.audit) } : {}), ...(error.searchQuery ? { searchQuery: error.searchQuery } : {}) } : {}) })
     return Response.json({ status: "failed" })
   }

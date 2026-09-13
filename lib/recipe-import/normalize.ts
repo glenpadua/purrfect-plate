@@ -6,7 +6,8 @@ import { canonicalizeRecipeTags } from "../recipe-tags"
 
 const squash = (text: string) => text.replace(/\s+/g, " ").trim()
 
-const passageLine = z.object({ text: z.string().min(1).max(3000), passageIds: z.array(z.string()).min(1).max(12) })
+const MAX_SOURCE_PASSAGES = 400
+const passageLine = z.object({ text: z.string().min(1).max(3000), passageIds: z.array(z.string()).min(1).max(MAX_SOURCE_PASSAGES) })
 const passageOutput = z.object({ name: z.string().min(1).max(200), tags: z.array(z.string().max(40)).max(20), ingredients: z.array(passageLine).max(100), instructions: z.array(passageLine).max(100), servings: z.string().max(100).nullable(), warnings: z.array(z.string().max(500)).max(20) })
 const normalizationOutput = passageOutput.extend({ contentType: z.enum(["recipe", "technique", "unrelated", "unknown"]), classificationQuote: z.string().max(500) })
 
@@ -57,8 +58,8 @@ export async function normalizeRecipe(evidence: Evidence[], timeoutMs = 90000) {
   const source = evidence.filter(e => e.kind !== "visual_observation").map(e => ({ ...e, text: e.text.slice(0, 60000) }))
   if (!source.some(e => e.text.trim())) throw new Error("We could not read this source. Check that the link is public and try again.")
   const passages = selectablePassages(source)
-  if (passages.length > 400) throw new Error("This source is too long to normalize reliably. Try a shorter recipe link.")
-  const itemSchema = { type: "object", additionalProperties: false, properties: { text: { type: "string" }, passageIds: { type: "array", items: { type: "string", enum: passages.map(p => p.id) } } }, required: ["text", "passageIds"] }
+  if (passages.length > MAX_SOURCE_PASSAGES) throw new Error("This source is too long to normalize reliably. Try a shorter recipe link.")
+  const itemSchema = { type: "object", additionalProperties: false, properties: { text: { type: "string" }, passageIds: { type: "array", minItems: 1, maxItems: MAX_SOURCE_PASSAGES, items: { type: "string", enum: passages.map(p => p.id) } } }, required: ["text", "passageIds"] }
   const response = await openai({
     model: "gpt-5.4-2026-03-05",
     reasoning: { effort: "low" },

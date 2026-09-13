@@ -24,7 +24,7 @@ Run `pnpm test:run`, `pnpm test:mobile`, `pnpm typecheck`, and `pnpm build`. The
 
 Web is hosted at [Purrfect Plate](https://purrfect-plate-theta.vercel.app). Vercel builds use production configuration. Convex deploys separately. Keep the full combined schema, including the import dismissal index, when deploying pantry changes. An older web bundle expects the old pantry functions; do not roll back the frontend independently of its backend contract.
 
-Fresh development imports need a reachable authenticated worker. The previously approved temporary tunnel expired; its replacement is not approved. Production has its own Vercel worker and does not depend on that tunnel or the Mac.
+Development imports use the outbound local worker described in [the setup guide](../README.md#start-local-development), after syncing the development backend. It replaces the temporary tunnel path. Production retains its Vercel dispatcher and does not depend on the Mac. Verify the affected import flow separately from the historical acceptance entries below.
 
 ## Remaining acceptance
 

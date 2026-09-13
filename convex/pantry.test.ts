@@ -62,7 +62,7 @@ test("recipe checkboxes drive bulk shopping, aliases deduplicate, and unclear so
   expect(await glen.mutation(api.pantry.addMissing, { recipeId })).toBe(0)
   await glen.mutation(api.pantry.setRecipePresence, { recipeId, text: ingredients[0].text, present: false })
   expect(await glen.mutation(api.pantry.addMissing, { recipeId })).toBe(1)
-  expect((await glen.query(api.recipes.get, { id: recipeId }))?.ingredients).toEqual(ingredients)
+  expect((await glen.query(api.recipes.get, { id: recipeId }))?.ingredients?.map(({ quantity: _quantity, ...line }) => line)).toEqual(ingredients)
 })
 
 test("ambiguous choices persist per recipe, support combined lines, and never become global aliases", async () => {
@@ -91,7 +91,7 @@ test("rename preserves IDs, previous names, source text, shopping labels and Und
   expect((await glen.query(api.pantry.shopping, {}))[0]).toMatchObject({ name: "Whole jeera", ingredientId })
   expect((await glen.query(api.pantry.matches, { recipeId }))[0]).toMatchObject({ names: ["Whole jeera"], present: true, ingredientIds: [ingredientId] })
   expect(await glen.mutation(api.pantry.setPresence, { name: "cumin seeds", present: true })).toBe(ingredientId)
-  expect((await glen.query(api.recipes.get, { id: recipeId }))?.ingredients).toEqual([{ text: "1 tsp jeera" }])
+  expect((await glen.query(api.recipes.get, { id: recipeId }))?.ingredients?.map(({ quantity: _quantity, ...line }) => line)).toEqual([{ text: "1 tsp jeera" }])
 })
 
 test("a rename collision previews before merge and combines stock, aliases, shopping and saved recipe choices", async () => {

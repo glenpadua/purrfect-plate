@@ -15,22 +15,70 @@ A shared cat-themed recipe library for Glen and Millusha. Import public links, r
 
 ## Development
 
-Use Node 24 and pnpm 10. Configure credentials privately using .env.local.example as a reference.
+Use Node 24 and pnpm 10. Install with `pnpm install --frozen-lockfile`.
+
+### Configure once
+
+Keep credentials in ignored `.env.local` files, never in Git. The root `.env.local.example` lists server variables; `apps/mobile/.env.local.example` lists the public client variables.
+
+- Root `.env.local`: `CONVEX_DEPLOYMENT=dev:basic-poodle-462`, `CONVEX_URL=https://basic-poodle-462.convex.cloud`, and one `NEXT_PUBLIC_CONVEX_URL` pointing to that same development backend. Add the private `IMPORT_WORKER_SECRET` matching the development Convex deployment, `OPENAI_API_KEY`, and `MEDIA_WORKER_URL` / `MEDIA_WORKER_SECRET` for video or photo posts. Copy these from the existing private project configuration; do not invent replacement secrets.
+- `apps/mobile/.env.local`: `EXPO_PUBLIC_CONVEX_URL=https://basic-poodle-462.convex.cloud` and the existing `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`. This file is what Metro reads; root `NEXT_PUBLIC_*` variables do not configure the local app.
+- The development Convex deployment also needs the existing Clerk issuer, invitations/library setup, and matching `IMPORT_WORKER_SECRET`. A fresh backend needs those configured before sign-in and imports can work.
+- The local worker is explicitly limited to `basic-poodle-462`. Production `spotted-gazelle-950` continues using the hosted worker. Never point a local test at production.
+
+### Start local development
+
+Run these in **three separate terminals**, from the repository root, and leave them running:
 
 ```bash
-pnpm install --frozen-lockfile
+# Terminal 1: sync backend changes to development
 pnpm exec convex dev
+```
+
+```bash
+# Terminal 2: web app
 pnpm dev
-# Shared browser preview: http://127.0.0.1:8082
+# Open http://localhost:8082
+```
+
+```bash
+# Terminal 3: imports, using the current local extraction code
+pnpm import:worker
+# Expected: Local import worker ready: development queue, no public tunnel.
+```
+
+The import worker connects outward to the development queue. **No Cloudflare tunnel, public local server, or development `IMPORT_WORKER_URL` is needed.** An old temporary tunnel URL can be left unused. Restart `pnpm import:worker` after changing extraction code or root environment variables; it does not hot reload. Metro updates shared screens automatically. Restart Metro after changing its environment or workspace dependency links.
+
+Sign in at `http://localhost:8082`, paste a recipe link in Imports, review the resulting draft and its **Ingredient amounts**, then save. A stopped import worker leaves new jobs queued; restart it to pick them up. If a running job was interrupted, its lease expires after six minutes and it can be retried. Closing the browser does not stop a running worker.
+
+### Troubleshooting imports
+
+- **Queued and not moving:** ensure Terminal 3 is running and Terminal 1 has synced `localImportWorker.claimNext`.
+- **Worker cannot reach development queue:** check the network, development backend URL, and matching worker secret. Secrets are never printed in worker logs.
+- **Import service could not finish:** older local setups used expiring public tunnels. Sync Convex, start the current worker, then retry the failed import. Do not recreate the tunnel.
+- **Video/photo retrieval warning:** check the configured media service and its credentials. A working web UI does not prove video extraction is configured.
+- **Sign-in works but library is unavailable:** verify the development Clerk issuer and verified invitation/library membership.
+- **Changed extraction code has no effect:** restart the import worker, not just the browser.
+
+`pnpm product:web` is an alias for the same Expo/Metro app. Use `pnpm mobile:ios` for the simulator. For the optional extraction-prototype API only, run `pnpm server:dev --port 3101`; this is not required for normal local imports.
+
+### Verify changes
+
+```bash
 pnpm test:run
 pnpm test:mobile
 pnpm typecheck
 pnpm build
 ```
 
-`pnpm dev` and `pnpm product:web` start the same Expo/Metro application. Use `pnpm mobile:ios` for the iOS simulator. Changes to shared screens appear in both connected development clients. The production website and installed phone releases need their respective release steps; they do not update merely because a local file changed.
+Structured quantities are added automatically on import/save. Older recipes also work immediately through the read fallback. To persist those records in development, run the bounded backfill for `recipes` and `imports`, passing each returned cursor until `done` is true:
 
-For server API development only, run `pnpm server:dev --port 3101`. The local extraction CLI still targets that API server; it has no separate frontend. Stop and restart development servers when workspace dependency links change.
+```bash
+pnpm exec convex run quantityMaintenance:backfill '{"table":"recipes","cursor":null}'
+pnpm exec convex run quantityMaintenance:backfill '{"table":"imports","cursor":null}'
+```
+
+The backfill is repeatable and preserves original text, source attribution, and quantity corrections. It does not re-import sources or call AI. Local changes do not update production or installed phone releases.
 
 ## Hosted pilot
 
@@ -56,6 +104,8 @@ The local extraction CLI and `/api/extraction-prototype` remain available for de
 
 ## Start here for contributors and agents
 
+- [AGENTS.md](AGENTS.md): task-to-feature map and repository boundaries.
+- [Development workflow](docs/development.md): service selection, focused tests, build configuration and completion checks.
 - [How the app works](docs/how-the-app-works.md): a plain-language guide with diagrams and release examples.
 - [Architecture and operations](docs/architecture.md): module ownership, authentication, jobs, image lifecycle and known limits.
 - [Import guardrails](docs/import-guardrails.md): cheap relevance checks, limits and honest alternatives.
@@ -72,14 +122,6 @@ After **every release**, verify production Convex independently with `pnpm verif
 
 ## Where to make changes
 
-| Change | Source |
-| --- | --- |
-| Screens, forms, buttons, responsive layout | `apps/mobile/src/features`, `apps/mobile/src/ui` |
-| Navigation and routes | `apps/mobile/src/app` |
-| Shared recipe, import and pantry rules | `convex` and pure helpers in `lib` |
-| Shared API/types, ingredient helpers and palette | `packages/recipe-core` |
-| Server extraction and media processing | `app/api`, `lib/recipe-import`, `services/media` |
-
-There is one product frontend. Do not add new product pages under root `app`, or recreate root `components`/`features`. Those duplicate implementations have been removed. The historical `apps/mobile` name includes the web application too. Small `.web.tsx` adapters handle browser-specific authentication, photo selection and provider embeds; they do not duplicate product screens.
+Use the [feature map](AGENTS.md#find-the-change) to locate the implementation and its behavior contract. The historical `apps/mobile` name includes the web application too; root Next.js hosts server APIs and the exported SPA.
 
 The pantry work from **Simplify pantry ingredient states** is preserved in Git commit `076f532` and ported into this shared UI, including its schema, dictionary, corrections, merge flow and tests. See [the pantry contract](docs/pantry.md).

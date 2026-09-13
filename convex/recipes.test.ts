@@ -34,7 +34,7 @@ describe("private shared recipe library", () => {
     expect(await glen.query(api.recipes.get, { id })).toMatchObject({ ingredients: original, recipeNotes: [{ text: "Use long grain rice.", sourceIds: ["card"] }] })
     await glen.mutation(api.recipes.update, { id, ingredients: recipeLinesFromText("## Rice\n2 cups rice", original), recipeNotes: [] })
     const edited = await millusha.query(api.recipes.get, { id })
-    expect(edited?.ingredients).toEqual([{ text: "2 cups rice", group: "Rice" }])
+    expect(edited?.ingredients?.map(({ quantity: _quantity, ...line }) => line)).toEqual([{ text: "2 cups rice", group: "Rice" }])
     expect(edited?.recipeNotes).toEqual([])
   })
   test("creates structured manual recipes, normalizes tags, and shares between members", async () => {

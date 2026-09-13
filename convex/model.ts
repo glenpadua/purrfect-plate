@@ -1,6 +1,12 @@
 import { v } from "convex/values"
 
-export const recipeLine = v.object({ text: v.string(), group: v.optional(v.string()), sourceIds: v.optional(v.array(v.string())) })
+const quantityMeasure = { amount: v.number(), maximum: v.optional(v.number()), approximate: v.optional(v.string()), unit: v.string(), tail: v.string() }
+export const ingredientQuantity = v.object({
+  version: v.literal(1), sourceText: v.string(), scalingText: v.optional(v.string()),
+  status: v.union(v.literal("scalable"), v.literal("unmeasured"), v.literal("review")),
+  parsed: v.optional(v.object({ ...quantityMeasure, prefix: v.string(), label: v.string(), alternate: v.optional(v.object(quantityMeasure)), additions: v.optional(v.array(v.object(quantityMeasure))) })),
+})
+export const recipeLine = v.object({ text: v.string(), group: v.optional(v.string()), sourceIds: v.optional(v.array(v.string())), quantity: v.optional(ingredientQuantity) })
 export const sourcePlatform = v.union(v.literal("instagram"), v.literal("youtube"), v.literal("tiktok"), v.literal("website"))
 export const servingInfo = v.object({ count: v.number(), origin: v.union(v.literal("source"), v.literal("estimated"), v.literal("user")), reason: v.optional(v.string()) })
 export const cookingPreference = v.object({

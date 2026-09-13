@@ -31,15 +31,15 @@ export function ServingControls({ info, sourceServings, ingredients, preference,
   const base = info?.count ?? null;
   const factor = cookingFactor(preference.adjustment, base, ingredients);
   const count = base ? base * (factor ?? 1) : null;
-  const choices = ingredients.flatMap(line => { const parsed = parseIngredient(line.text); return parsed ? [{ text: line.text, parsed }] : []; });
+  const choices = ingredients.flatMap(line => { const parsed = parseIngredient(line); return parsed && !parsed.additions?.length && parsed.maximum === undefined ? [{ text: line.text, line, parsed }] : []; });
   const active = choices.find(item => item.text === selected);
   const availableUnits = active ? ingredientUnits(active.parsed) : [];
   const value = parseCookingAmount(amount);
-  const preview = value && active ? ingredientScale(active.text, value, unit) : null;
+  const preview = value && active ? ingredientScale(active.line, value, unit) : null;
   function choose(text: string) {
     const item = choices.find(item => item.text === text);
     if (!item) return;
-    const initialUnit = ingredientUnits(item.parsed).find(value => ingredientScale(text, item.parsed.amount, value) === 1) ?? (item.parsed.unit || "items");
+    const initialUnit = ingredientUnits(item.parsed).find(value => ingredientScale(item.line, item.parsed.amount, value) === 1) ?? (item.parsed.unit || "items");
     setSelected(text); setUnit(initialUnit); setAmount(String(item.parsed.amount)); setChoosing(false); setSearch(""); setAmountError("");
   }
   function openAnchor() {
@@ -107,7 +107,7 @@ export function ServingControls({ info, sourceServings, ingredients, preference,
         <Field label="Amount you have" value={amount} onChangeText={text => { setAmount(text); setAmountError(""); }} keyboardType="decimal-pad" maxLength={16} selectTextOnFocus />
         <View style={styles.row}>{[...new Set([...availableUnits, unit])].map(value => <UnitChoice key={value} title={value} selected={unit === value} onPress={() => setUnit(value)} />)}</View>
         {preview !== null && <Body muted>{formatCookingAmount(preview)}× batch{base ? ` · about ${formatCookingAmount(base * preview)} servings` : ""}</Body>}
-        {!!preview && ingredients.find(line => line.text !== selected && parseIngredient(line.text)) && <Body muted>{ingredientForCooking(ingredients.find(line => line.text !== selected && parseIngredient(line.text))!.text, { factor: preview, units: preference.units }).text}</Body>}
+        {!!preview && ingredients.find(line => line.text !== selected && parseIngredient(line)) && <Body muted>{ingredientForCooking(ingredients.find(line => line.text !== selected && parseIngredient(line))!, { factor: preview, units: preference.units }).text}</Body>}
         <ErrorMessage message={amountError} />
         <Button title="Adjust ingredients" onPress={() => {
           if (!preview || !value) { setAmountError("Enter a positive amount between 0.001× and 100× the base quantity."); return; }

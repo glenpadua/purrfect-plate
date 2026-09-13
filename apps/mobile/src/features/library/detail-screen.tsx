@@ -91,7 +91,7 @@ export function DetailScreen() {
         </View>
         <View style={{ flex: 1, width: "100%", gap: 18 }}>
           <SavedCookingPanel
-            key={recipe._id}
+            key={`cooking:${recipe._id}`}
             recipe={recipe}
             onCookingChange={setCooking}
             recipeId={recipe._id}
@@ -105,7 +105,7 @@ export function DetailScreen() {
               void task.run(() => actions.markCooked({ id: recipe._id }))
             }
           />
-          {!!recipe.importWarnings?.length && <ImportNotes key={recipe._id} warnings={recipe.importWarnings} />}
+          {!!recipe.importWarnings?.length && <ImportNotes key={`import-notes:${recipe._id}`} warnings={recipe.importWarnings} />}
         </View>
       </View>
     </Page>
